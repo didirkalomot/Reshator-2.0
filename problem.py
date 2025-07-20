@@ -151,3 +151,9 @@ problem = Problem(plus)
 
 print(problem)
 
+#######
+######
+#####
+####
+###
+#
