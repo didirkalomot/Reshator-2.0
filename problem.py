@@ -61,8 +61,9 @@ class Letter(Value):
         return self.value
 
 class Operator(Node):
-    def __init__(self, left=None, right=None):
+    def __init__(self, priority = 1, left=None, right=None):
         super().__init__(left, right)
+        self.priority = priority
 
     def __str__(self):
         return 'operator'
@@ -71,7 +72,7 @@ class Operator(Node):
 
 class Plus(Operator):
     def __init__(self, left, right):
-        super().__init__(left, right)
+        super().__init__(1, left, right)
 
     def __str__(self):
         return '+'
@@ -87,7 +88,7 @@ class Minus(Operator):
         if right is None:
             right = left
             left = None
-        super().__init__(left, right)
+        super().__init__(1, left, right)
 
     def __str__(self):
         return '-'
@@ -103,7 +104,7 @@ class Minus(Operator):
         
 class Mult(Operator):
     def __init__(self, left, right):
-        super().__init__(left, right)
+        super().__init__(2, left, right)
 
     def __str__(self):
         return '*'
@@ -116,7 +117,7 @@ class Mult(Operator):
 
 class Div(Operator):
     def __init__(self, left, right):
-        super().__init__(left, right)
+        super().__init__(2, left, right)
 
     def __str__(self):
         return '/'
@@ -129,7 +130,7 @@ class Div(Operator):
 
 class Pow(Operator):
     def __init__(self, left, right):
-        super().__init__(left, right)
+        super().__init__(3, left, right)
 
     def __str__(self):
         return '^'
@@ -197,7 +198,25 @@ class Problem():
                     parent.left = result
                 elif parent.right == operator:
                     parent.right = result   
-                                   
+
+#####################################################################################
+
+def make_problem(nodes: list) -> Problem:
+    node_min_priority = Operator(priority = 999)
+    for node in nodes[::-1]:
+        if isinstance(node, Operator):
+            if node.priority < node_min_priority.priority:
+                node_min_priority = node
+    # node - корень
+
+            
+
+make_problem('привет андрей')
+
+
+
+
+"""                                   
 a = Number(3)
 b = Number(4)
 c = Number(5)
@@ -216,3 +235,4 @@ except Bad as bad:
 except: pass
 
 print(problem)
+"""
