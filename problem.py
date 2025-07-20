@@ -1,2 +1,6 @@
 class Problem:
-    def __init__(self):pass
+    def __init__(self):
+        pass
+
+A = Problem()
+print(type(A))
