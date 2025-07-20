@@ -1,130 +1,4 @@
 class Node:
-    def __init__(self, left = None, right = None):
-        self.left = left
-        self.right = right
-
-    def __str__(self):
-        return 'node'
-
-class Value(Node):
-    def __init__(self, value):
-        super().__init__()
-        self.value = value
-
-    def __str__(self):
-        return 'value'
-
-class Number(Value):
-    def __init__(self, value : float):
-        super().__init__(value)
-        if value.is_integer(): self.value = int(value)
-        else: self.value = value
-
-    def __str__(self):
-        return str(self.value)  
-    
-    def __add__(self, other):
-        if isinstance(other, Number):
-            return Number(self.value + other.value)
-        return None
-        
-    def __neg__(self):
-        return Number(-self.value)
-    
-    def __sub__(self, other):
-        if isinstance(other, Number):
-            return Number(self.value - other.other)
-        return None
-        
-    def __mul__(self, other):
-        if isinstance(other, Number):
-            return Number(self.value * other.value)
-        return None
-        
-    def __truediv__(self, other):
-        if isinstance(other, Number):
-            return Number(self.value / other.value)
-        return None
-        
-    def __pow__(self, other):
-        if isinstance(other, Number):
-            return Number(self.value ** other.value)
-        return None
-  
-class Letter(Value):
-    def __init__(self, value : str):
-        super().__init__(value)
-
-    def __str__(self):
-        return self.value
-    
-class Operator(Node):
-    def __init__(self, left = None, right = None):
-        super().__init__(left, right)
-
-    def __str__(self):
-        return 'operator'
-
-    def work(self):
-        print('work')
-
-class Plus(Operator):
-    def __init__(self, left, right):
-        super().__init__(left, right)
-
-    def __str__(self):
-        return '+'
-    
-    def work(self):
-        return self.left + self.right
-    
-class Minus(Operator):
-    def __init__(self, left, right = None):
-        if right == None: right, left = left, None
-        super().__init__(left, right)
-
-    def __str__(self):
-        return '-'
-    
-    def work(self):
-        if self.left == None:
-            return -self.right 
-        else: 
-            return self.left - self.right
-    
-class Mult(Operator):
-    def __init__(self, left, right):
-        super().__init__(left, right)
-
-    def __str__(self):
-        return '*'
-    
-    def work(self):
-        return self.left * self.right
-
-class Div(Operator):
-    def __init__(self, left, right):
-        super().__init__(left, right)
-
-    def __str__(self):
-        return '/'
-    
-    def work(self):
-        return self.left / self.right
-    
-class Pow(Operator):
-    def __init__(self, left, right):
-        super().__init__(left, right)
-
-    def __str__(self):
-        return '^'
-    
-    def work(self):
-        return self.left ** self.right
-
-#####################################################################################
-
-class Node:
     def __init__(self, left=None, right=None):
         self.left = left
         self.right = right
@@ -193,8 +67,7 @@ class Operator(Node):
     def __str__(self):
         return 'operator'
 
-    def work(self):
-        raise NotImplementedError("This method should be implemented by subclasses")
+    def work(self):pass
 
 class Plus(Operator):
     def __init__(self, left, right):
@@ -204,7 +77,10 @@ class Plus(Operator):
         return '+'
 
     def work(self):
-        return self.left + self.right
+        try:
+            return self.left + self.right
+        except:
+            return None
 
 class Minus(Operator):
     def __init__(self, left, right=None):
@@ -217,11 +93,14 @@ class Minus(Operator):
         return '-'
 
     def work(self):
-        if self.left is None:
-            return -self.right
-        else:
-            return self.left - self.right
-
+        try:
+            if self.left is None:
+                return -self.right
+            else:
+                return self.left - self.right
+        except:
+            return None
+        
 class Mult(Operator):
     def __init__(self, left, right):
         super().__init__(left, right)
@@ -230,7 +109,10 @@ class Mult(Operator):
         return '*'
 
     def work(self):
-        return self.left * self.right
+        try:
+            return self.left * self.right
+        except:
+            return None
 
 class Div(Operator):
     def __init__(self, left, right):
@@ -240,7 +122,10 @@ class Div(Operator):
         return '/'
 
     def work(self):
-        return self.left / self.right
+        try:
+            return self.left / self.right
+        except:
+            return None
 
 class Pow(Operator):
     def __init__(self, left, right):
@@ -250,7 +135,24 @@ class Pow(Operator):
         return '^'
 
     def work(self):
-        return self.left ** self.right
+        try:
+            return self.left ** self.right
+        except:
+            return None
+        
+#####################################################################################
+
+class Bad(Exception):
+    def __init__(self, current : Node, damage):
+        self.current = current
+        self.damage = damage
+    
+class NotOperatorDefinition(Bad):
+    def __init__(self, current : Node):
+        super().__init__(current, 3)
+
+    def __str__(self):
+        return f'нет оператора "{str(self.current)}" для классов: {type(self.current.left).__name__} и {type(self.current.right).__name__}'
 
 #####################################################################################
 
@@ -283,6 +185,8 @@ class Problem():
             return 
             
         result = operator.work()
+
+        if result == None: raise NotOperatorDefinition(operator)
         
         if operator == self.root:
             self.root = result 
@@ -305,6 +209,10 @@ problem = Problem(plus)
 
 print(problem)
 
-problem.use_operator(mult)
+try:
+    problem.use_operator(plus)
+except Bad as bad:
+    print(str(bad))
+except: pass
 
 print(problem)
