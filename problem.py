@@ -201,22 +201,64 @@ class Problem():
 
 #####################################################################################
 
-def make_problem(nodes: list) -> Problem:
-    node_min_priority = Operator(priority = 999)
-    for node in nodes[::-1]:
-        if isinstance(node, Operator):
-            if node.priority < node_min_priority.priority:
-                node_min_priority = node
-    # node - корень
+symbols_operators_dict = {
+    '+' : Plus,
+    '-' : Minus,
+    '*' : Mult,
+    '/' : Div,
+    '^' : Pow
+}
 
-            
+def make_problem(string: str) -> Problem:
 
-make_problem('привет андрей')
+    def problem_string_to_list(string: str):
+        nodes_list = string.split(' ')
+        for i, ch in enumerate(nodes_list):
+            try: 
+                number = float(ch)
+                nodes_list[i] = Number(number)
+            except:
+                if ch in symbols_operators_dict:
+                    nodes_list[i] = symbols_operators_dict[ch](None, None)
+                elif ch.isalpha() and len(ch) == 1: nodes_list[i] = Letter(ch)
+                else: raise TypeError   
+    
+        return nodes_list
+
+    def find_root(nodes: list) -> Node:
+        last_operator = None
+        for node in nodes:
+            if isinstance(node, Operator): last_operator = node
+        for node in nodes:
+            if isinstance(node, Operator):
+                if node.priority <= last_operator.priority:
+                    last_operator = node
+        return last_operator
+
+    def recursive_make_problem(nodes: list) -> Node:
+        if nodes == None or len(nodes) == 0: return
+        if len(nodes) == 1: return nodes[0]
+        root = find_root(nodes)
+        left = nodes[:nodes.index(root)]
+        right = nodes[nodes.index(root)+1:]
+        root.left = recursive_make_problem(left)
+        root.right = recursive_make_problem(right)
+        return root
+    
+    nodes = problem_string_to_list(string)
+    root = recursive_make_problem(nodes)
+    return Problem(root)
+
+#####################################################################################
+
+string =  '- 33 + -4.5 - a + 10'
+
+problem = make_problem(string)
+
+print(problem)
 
 
-
-
-"""                                   
+'''                              
 a = Number(3)
 b = Number(4)
 c = Number(5)
@@ -235,4 +277,4 @@ except Bad as bad:
 except: pass
 
 print(problem)
-"""
+'''
