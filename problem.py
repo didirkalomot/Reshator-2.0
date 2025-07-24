@@ -88,6 +88,8 @@ class Minus(Operator):
         if right is None:
             right = left
             left = None
+            super().__init__(9, left, right)
+            return
         super().__init__(1, left, right)
 
     def __str__(self):
@@ -161,16 +163,23 @@ class Problem():
     def __init__(self, node: Node = Node()):
         self.root = node
 
-    @staticmethod
-    def recursive_str(node: Node):
-        if node is not None:
-            return Problem.recursive_str(node.left) + ' ' + str(node) + ' ' + Problem.recursive_str(node.right)
-        else:
-            return ''
-
     def __str__(self):
-        return Problem.recursive_str(self.root).strip()
+        def recursive_str(node: Node):
+            if node is not None:
+                return recursive_str(node.left) + ' ' + str(node) + ' ' + recursive_str(node.right)
+            else:
+                return ''
+        return recursive_str(self.root)
     
+    def print_tree(self):
+        def recursive_print_tree(node: Node, depth = 0):
+            if node is None: return
+            string = '-' * depth + type(node).__name__+ ' ' + str(node)
+            print(string)
+            recursive_print_tree(node.left, depth+1)
+            recursive_print_tree(node.right, depth+1)
+        recursive_print_tree(self.root)
+
     def find_parent(self, current: Node, child: Node):
         if current is None:
             return None
@@ -183,12 +192,9 @@ class Problem():
 
     def use_operator(self, operator: Operator):
         if not isinstance(operator, Operator): 
-            return 
-            
+            return     
         result = operator.work()
-
-        if result == None: raise NotOperatorDefinition(operator)
-        
+        if result is None: raise NotOperatorDefinition(operator)
         if operator == self.root:
             self.root = result 
         else:
@@ -210,7 +216,6 @@ symbols_operators_dict = {
 }
 
 def make_problem(string: str) -> Problem:
-
     def problem_string_to_list(string: str):
         nodes_list = string.split(' ')
         for i, ch in enumerate(nodes_list):
@@ -222,7 +227,6 @@ def make_problem(string: str) -> Problem:
                     nodes_list[i] = symbols_operators_dict[ch](None, None)
                 elif ch.isalpha() and len(ch) == 1: nodes_list[i] = Letter(ch)
                 else: raise TypeError   
-    
         return nodes_list
 
     def find_root(nodes: list) -> Node:
@@ -236,7 +240,7 @@ def make_problem(string: str) -> Problem:
         return last_operator
 
     def recursive_make_problem(nodes: list) -> Node:
-        if nodes == None or len(nodes) == 0: return
+        if nodes is None or len(nodes) == 0: return
         if len(nodes) == 1: return nodes[0]
         root = find_root(nodes)
         left = nodes[:nodes.index(root)]
@@ -251,30 +255,20 @@ def make_problem(string: str) -> Problem:
 
 #####################################################################################
 
-string =  '- 33 + -4.5 - a + 10'
-
-problem = make_problem(string)
-
+problem = make_problem('- 33 / 5 + -4 * 3')
 print(problem)
 
-
-'''                              
-a = Number(3)
-b = Number(4)
-c = Number(5)
-
-mult = Mult(b, c)
-minus =  Minus(a)
-plus = Plus(minus, mult)
-problem = Problem(plus)
-
+problem.use_operator(problem.root.right)
 print(problem)
 
-try:
-    problem.use_operator(plus)
-except Bad as bad:
-    print(str(bad))
-except: pass
-
+problem.use_operator(problem.root.left.left)
 print(problem)
-'''
+
+problem.use_operator(problem.root.left)
+print(problem)
+
+problem.use_operator(problem.root)
+print(problem)
+
+#problem.print_tree()
+
