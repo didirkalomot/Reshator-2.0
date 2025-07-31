@@ -55,7 +55,9 @@ class Number(Value):
 
 class Letter(Value):
     def __init__(self, value: str):
-        super().__init__(value)
+        if len(value) == 1 and value.isalpha():
+            super().__init__(value)
+        else: raise TypeError
 
     def __str__(self):
         return self.value
@@ -160,13 +162,22 @@ class PriorityError(Bad):
 #####################################################################################
 
 class Problem():
-    def __init__(self, node: Node = Node()):
+    def __init__(self, node: Node = Number(0)):
         self.root = node
 
     def __str__(self):
         def recursive_str(node: Node):
             if node is not None:
-                return recursive_str(node.left) + ' ' + str(node) + ' ' + recursive_str(node.right)
+                left_string = recursive_str(node.left)
+                right_string = recursive_str(node.right)
+                if isinstance(node, Operator):
+                    if isinstance(node.left, Operator):
+                        if node.left.priority < node.priority:
+                            left_string = '(' + left_string + ')'
+                    if isinstance(node.right, Operator):
+                        if node.right.priority < node.priority:
+                            right_string = '(' + right_string + ')'
+                return left_string + ' ' + str(node) + ' ' + right_string
             else:
                 return ''
         return recursive_str(self.root)
@@ -174,7 +185,7 @@ class Problem():
     def print_tree(self):
         def recursive_print_tree(node: Node, depth = 0):
             if node is None: return
-            string = '-' * depth + str(node)
+            string = '-' * depth + '[' + str(node) + ']'
             print(string)
             recursive_print_tree(node.left, depth+1)
             recursive_print_tree(node.right, depth+1)
@@ -214,46 +225,6 @@ symbols_operators = {
     '/' : Div,
     '^' : Pow
 }
-'''
-def make_problem(string: str) -> Problem:
-    def problem_string_to_list(string: str):
-        nodes_list = string.split(' ')
-        for i, ch in enumerate(nodes_list):
-            try: 
-                number = float(ch)
-                nodes_list[i] = Number(number)
-            except:
-                if ch in symbols_operators:
-                    nodes_list[i] = symbols_operators[ch](None, None)
-                elif ch.isalpha() and len(ch) == 1: nodes_list[i] = Letter(ch)
-        print(nodes_list)
-        return nodes_list
-
-    def find_root(nodes: list) -> Node:
-        last_operator = None
-        for node in nodes:
-            if isinstance(node, Operator): last_operator = node
-        for node in nodes:
-            if isinstance(node, Operator):
-                if node.priority <= last_operator.priority:
-                    last_operator = node
-        return last_operator
-
-    def recursive_make_problem(nodes: list) -> Node:
-        if nodes is None or len(nodes) == 0: return
-        if len(nodes) == 1: return nodes[0]
-        root = find_root(nodes)
-        left = nodes[:nodes.index(root)]
-        right = nodes[nodes.index(root)+1:]
-        root.left = recursive_make_problem(left)
-        root.right = recursive_make_problem(right)
-        return root
-    
-    nodes = problem_string_to_list(string)
-    root = recursive_make_problem(nodes)
-    return Problem(root)
-'''
-#####################################################################################
 
 def make_problem(string: str) -> Problem:
     string = string.replace(' ', '')
@@ -282,14 +253,17 @@ def make_problem(string: str) -> Problem:
         return index
     
     def make_value(string: str) -> Value:
-        try: return Number(float(string))
+        try:
+            return Number(float(string))
         except: 
-            try: return Letter(string)
-            except: return None
+            try:
+                return Letter(string)
+            except: 
+                return None
 
     def recursive_make_node(string: str) -> Node:
-        if string[0] == '(' and string[-1] == ')': string = string[1:-1]
-        if string == '' or ' ' or None: return None
+        if len(string) > 1 and string[0] == '(' and string[-1] == ')': string = string[1:-1]
+        if string == '' or string == ' ' or string == None: return None
 
         value = make_value(string)
         if value != None: return value
@@ -301,13 +275,11 @@ def make_problem(string: str) -> Problem:
         node = symbols_operators[char](recursive_make_node(left), recursive_make_node(right))
         return node
             
-        
     root = recursive_make_node(string)
     return Problem(root)
+
+#####################################################################################
                 
-    
-
-
-problem = make_problem('3+2')
+problem = make_problem('3*((2+2) * (- (3.4)))')
 
 print(problem)
