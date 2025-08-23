@@ -3,16 +3,25 @@ class Node:
         self.left = left
         self.right = right
 
-    def __str__(self):
-        return 'node'
+    def __str__(self): return 'node'
+    
+    def __len__(self): return 0
 
+    def recursive_len(self) -> int:
+        if self.left != None: left_size = self.left.recursive_len() + 1
+        else: left_size = 0
+        if self.right != None: right_size = self.right.recursive_len() + 1
+        else: right_size = 0
+        return left_size + len(self) + right_size
+    
 class Value(Node):
     def __init__(self, value):
         super().__init__()
         self.value = value
 
-    def __str__(self):
-        return 'value'
+    def __str__(self): return 'value'
+    
+    def __len__(self): return 1
 
 class Number(Value):
     def __init__(self, value: float):
@@ -22,8 +31,9 @@ class Number(Value):
         else:
             self.value = value
 
-    def __str__(self):
-        return str(self.value)
+    def __str__(self): return str(self.value)
+    
+    def __len__(self): return len(str(self.value))
 
     def __add__(self, other):
         if isinstance(other, Number):
@@ -59,16 +69,26 @@ class Letter(Value):
             super().__init__(value)
         else: raise TypeError
 
-    def __str__(self):
-        return self.value
+    def __str__(self): return self.value
+
+    def __len__(self): return len(self.value)
 
 class Operator(Node):
     def __init__(self, priority, left=None, right=None):
         super().__init__(left, right)
         self.priority = priority
 
-    def __str__(self):
-        return 'operator'
+    def __str__(self): return 'operator'
+    
+    def __len__(self): return 1 
+
+    def recursive_len(self) -> int:
+        result = super().recursive_len()
+        if isinstance(self.left, Operator):
+            if self.left.priority < self.priority: result += 2
+        if isinstance(self.right, Operator):
+            if self.right.priority < self.priority: result += 2
+        return result
 
     def work(self):pass
 
@@ -166,21 +186,24 @@ class Problem():
         self.root = node
 
     def __str__(self):
-        def recursive_str(node: Node):
+        def recursive_str(node: Node) -> str:
             if node is not None:
                 left_string = recursive_str(node.left)
-                right_string = recursive_str(node.right)
+                right_string =  recursive_str(node.right)
                 if isinstance(node, Operator):
                     if isinstance(node.left, Operator):
                         if node.left.priority < node.priority:
-                            left_string = '(' + left_string + ')'
+                            left_string = '(' + left_string[1:-1] + ')'
                     if isinstance(node.right, Operator):
                         if node.right.priority < node.priority:
-                            right_string = '(' + right_string + ')'
+                            right_string = '(' + right_string[1:-1] + ')'
                 return left_string + ' ' + str(node) + ' ' + right_string
             else:
                 return ''
         return recursive_str(self.root)
+    
+    def __len__(self):
+        return len(str(self))
     
     def print_tree(self):
         def recursive_print_tree(node: Node, depth = 0):
@@ -201,9 +224,9 @@ class Problem():
             return left_result
         return self.find_parent(current.right, child)
 
-    def use_operator(self, operator: Operator):
+    def use_operator(self, operator: Operator) -> Value:
         if not isinstance(operator, Operator): 
-            return     
+            return None
         result = operator.work()
         if result is None: raise PriorityError(operator)
         if operator == self.root:
@@ -215,6 +238,7 @@ class Problem():
                     parent.left = result
                 elif parent.right == operator:
                     parent.right = result   
+        return result
 
 #####################################################################################
 
@@ -233,6 +257,17 @@ def make_problem(string: str) -> Problem:
         if char not in symbols_operators: return None
         return symbols_operators[char](None, None).priority
     
+    def remove_brackets(string):
+        if len(string) < 2 or string[0] != '(' or string[-1] != ')':
+            return string
+        depth = 1
+        for ch in string[1:-1]:
+            if ch == '(': depth += 1; continue
+            if ch == ')': depth -= 1; continue
+            if depth == 0:
+                return string
+        return string[1:-1]
+
     def find_root_index(string):
         depth = 0
         index = None
@@ -250,6 +285,7 @@ def make_problem(string: str) -> Problem:
                 if priority >= last_priority:
                     last_priority = priority
                     index = i
+        if index == None: print(string)
         return index
     
     def make_value(string: str) -> Value:
@@ -262,7 +298,7 @@ def make_problem(string: str) -> Problem:
                 return None
 
     def recursive_make_node(string: str) -> Node:
-        if len(string) > 1 and string[0] == '(' and string[-1] == ')': string = string[1:-1]
+        string = remove_brackets(string)
         if string == '' or string == ' ' or string == None: return None
 
         value = make_value(string)
@@ -279,7 +315,3 @@ def make_problem(string: str) -> Problem:
     return Problem(root)
 
 #####################################################################################
-                
-problem = make_problem('3*((2+2) * (- (3.4)))')
-
-print(problem)
