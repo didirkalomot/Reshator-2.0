@@ -12,7 +12,7 @@ class ExampleSymbol():
         self.sprite: arcade.Sprite = arcade.create_text_sprite(
             str(node),
             color = arcade.color.WHITE,
-            font_size = 25.0,
+            font_size = 25.0
         )
         self.sprite.position = [x, y]
 
@@ -31,10 +31,11 @@ class ExampleSolution(arcade.View):
         self.example = example
         self.symbols = []
         self.sprites = arcade.SpriteList()
+        self.cursor = arcade.Sprite('arcade_test/cursor.png')
 
+        self.sprites.append(self.cursor) # don't work!
         self.make_symbols()
     
-    ### не работает (позиции не те)
     def make_symbols(self):
         def recursive_make_symbols(node: problem.Node, x, y):
             new_symbol = ExampleSymbol(self.example, node, x, y)
@@ -49,7 +50,6 @@ class ExampleSolution(arcade.View):
         self.symbols.clear()
         self.sprites.clear()
         recursive_make_symbols(self.example.root, CENTER[0], CENTER[1])
-    ###
 
     def reset(self):
         pass
@@ -64,14 +64,14 @@ class ExampleSolution(arcade.View):
 
     def on_key_release(self, key, modifiers):pass
 
-    def on_mouse_motion(self, x, y, dx, dy):pass
-
-    def on_mouse_press(self, x, y, button, key_modifiers):pass
-
+    def on_mouse_motion(self, x, y, dx, dy):
+        self.cursor.position = x, y # don't work!
+        
     def on_mouse_release(self, x, y, button, key_modifiers):pass
 
 def main():
-    example = problem.make_problem('((-(3) - 5)+ 3 * 4) / ((34 - 3) * 4)')
+    #example = problem.make_problem('((-(3) - 5)+ 3 * 4) / ((34 - 3) * 4)')
+    example = problem.make_problem('(-(3) - 5)+ 3 * 4')
 
     window = arcade.Window(WIDTH, HEIGHT, 'Reshator 3000')
     game = ExampleSolution(example) 
