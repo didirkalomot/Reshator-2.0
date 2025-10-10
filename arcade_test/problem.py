@@ -1,3 +1,32 @@
+class Good(Exception):pass
+
+class Bad(Exception):
+    def __init__(self, current, damage):
+        self.current = current
+        self.damage = damage
+
+class UnknownVariable(Bad):
+    def __int__(self, current):
+        super().__init__(current, 1)
+
+    def __str__(self):
+        return 'один из операндов - неизвестная переменная'
+    
+class WrongPriority(Bad):
+    def __init__(self, current):
+        super().__init__(current, 1)
+
+    def __str__(self):
+        return 'не тот порядок действий'
+class NoCommutativity(Bad):
+    def __init__(self, current):
+        super().__init__(current, 2)
+
+    def __str__(self):
+        return 'нет коммутативности'
+
+#####################################################################################
+
 class Node:
     def __init__(self, left=None, right=None):
         self.left = left
@@ -7,13 +36,15 @@ class Node:
     
     def __len__(self): return 0
 
+    """
     def recursive_len(self) -> int:
         if self.left != None: left_size = self.left.recursive_len() + 1
         else: left_size = 0
         if self.right != None: right_size = self.right.recursive_len() + 1
         else: right_size = 0
         return left_size + len(self) + right_size
-    
+    """
+
 class Value(Node):
     def __init__(self, value):
         super().__init__()
@@ -74,14 +105,17 @@ class Letter(Value):
     def __len__(self): return len(self.value)
 
 class Operator(Node):
-    def __init__(self, priority, left=None, right=None):
+    def __init__(self, left=None, right=None, priority = 1, commutativity = False, associativity = False):
         super().__init__(left, right)
         self.priority = priority
+        self.commutativity = commutativity
+        self.associativity = associativity
 
     def __str__(self): return 'operator'
     
     def __len__(self): return 1 
 
+    """
     def recursive_len(self) -> int:
         result = super().recursive_len()
         if isinstance(self.left, Operator):
@@ -89,22 +123,30 @@ class Operator(Node):
         if isinstance(self.right, Operator):
             if self.right.priority < self.priority: result += 2
         return result
+    """
 
-    def work(self):pass
+    def work(self):
+        if isinstance(self.left, Operator): raise WrongPriority(self.left)
+        if isinstance(self.left, Letter): raise UnknownVariable(self.left)
+
+        if isinstance(self.right, Operator): raise WrongPriority(self.rigth)
+        if isinstance(self.right, Letter): raise UnknownVariable(self.right)
+
 
 class Minus(Operator):
     def __init__(self, left, right=None):
         if right is None:
             right = left
             left = None
-            super().__init__(1, left, right)
+            super().__init__(left, right, 2)
             return
-        super().__init__(2, left, right)
+        super().__init__(left, right, 4)
 
     def __str__(self):
         return '-'
 
     def work(self):
+        super().work()
         try:
             if self.left is None:
                 return -self.right
@@ -115,12 +157,13 @@ class Minus(Operator):
         
 class Plus(Operator):
     def __init__(self, left, right):
-        super().__init__(2, left, right)
+        super().__init__(left, right, 4, True, True)
 
     def __str__(self):
         return '+'
 
     def work(self):
+        super().work()
         try:
             return self.left + self.right
         except:
@@ -128,12 +171,13 @@ class Plus(Operator):
         
 class Pow(Operator):
     def __init__(self, left, right):
-        super().__init__(3, left, right)
+        super().__init__(left, right, 1)
 
     def __str__(self):
         return '^'
 
     def work(self):
+        super().work()
         try:
             return self.left ** self.right
         except:
@@ -141,12 +185,13 @@ class Pow(Operator):
         
 class Mult(Operator):
     def __init__(self, left, right):
-        super().__init__(4, left, right)
+        super().__init__(left, right, 3, True, True)
 
     def __str__(self):
         return '*'
 
     def work(self):
+        super().work()
         try:
             return self.left * self.right
         except:
@@ -154,12 +199,13 @@ class Mult(Operator):
 
 class Div(Operator):
     def __init__(self, left, right):
-        super().__init__(4, left, right)
+        super().__init__(left, right, 3)
 
     def __str__(self):
         return '/'
 
     def work(self):
+        super().work()
         try:
             return self.left / self.right
         except:
@@ -167,19 +213,6 @@ class Div(Operator):
         
 #####################################################################################
 
-class Bad(Exception):
-    def __init__(self, current : Node, damage):
-        self.current = current
-        self.damage = damage
-    
-class PriorityError(Bad):
-    def __init__(self, current : Node):
-        super().__init__(current, 1)
-
-    def __str__(self):
-        return 'не тот порядок действий'
-
-#####################################################################################
 
 class Problem():
     def __init__(self, node: Node = Number(0)):
@@ -224,11 +257,10 @@ class Problem():
             return left_result
         return self.find_parent(current.right, child)
 
-    def use_operator(self, operator: Operator) -> Value:
-        if not isinstance(operator, Operator): 
-            return None
+    def use_operator(self, operator: Operator):
+        if not isinstance(operator, Operator): return 
         result = operator.work()
-        if result is None: raise PriorityError(operator)
+        if result is None: return
         if operator == self.root:
             self.root = result 
         else:
@@ -238,7 +270,12 @@ class Problem():
                     parent.left = result
                 elif parent.right == operator:
                     parent.right = result   
-        return result
+    
+    def use_commutativity(self, operator):
+        if not isinstance(operator, Operator): return
+        if not operator.commutativity: raise NoCommutativity(operator)
+
+        operator.left, operator.right = operator.right, operator.left
 
 #####################################################################################
 
@@ -315,3 +352,61 @@ def make_problem(string: str) -> Problem:
     return Problem(root)
 
 #####################################################################################
+
+class ProblemList():
+    def make_list(problem : Problem) -> list:
+        def recursive_make_list(node : Node) -> list:
+            if node is None: return []
+            if isinstance(node, Value):
+                return [node]
+            elif isinstance(node, Operator):
+                left = recursive_make_list(node.left)
+                right = recursive_make_list(node.right)
+                if isinstance(node.left, Operator):
+                    if node.left.priority > node.priority: left = ['('] + left + [')']
+                if isinstance(node.right, Operator):
+                    if node.right.priority > node.priority:  right = ['('] + right + [')'] 
+                return left + [node] + right
+        
+        return recursive_make_list(problem.root)
+    
+    def __init__(self, problem: Problem):
+        self.problem_tree = problem
+        self.problem_list = ProblemList.make_list(problem)
+
+    def __str__(self):
+        string = ''
+        for node in self.problem_list:
+            string += str(node) + ' '
+        return string[:-1]
+    
+    def __getitem__(self, index): 
+        return self.problem_list[index]
+    
+    def __iter__(self): 
+        return self.problem_list 
+
+
+    def use_operator(self, operator):
+        self.problem_tree.use_operator(operator)
+        self.problem_list = ProblemList.make_list(self.problem_tree)
+
+    def use_commutativity(self, operator):
+        self.problem_tree.use_commutativity(operator)
+        self.problem_list = ProblemList.make_list(self.problem_tree)
+
+    
+
+
+#####################################################################################
+
+
+
+#####################################################################################
+
+a = make_problem('((-3 - 5)+ 3 * 4) / ((34 - 3) * 4)')
+pl = ProblemList(a)
+print(pl)
+pl.use_operator(pl[2])
+print(pl)
+
