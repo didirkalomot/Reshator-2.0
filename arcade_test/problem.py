@@ -214,7 +214,7 @@ class Div(Operator):
 #####################################################################################
 
 
-class Problem():
+class ProblemTree():
     def __init__(self, node: Node = Number(0)):
         self.root = node
 
@@ -225,10 +225,10 @@ class Problem():
                 right_string =  recursive_str(node.right)
                 if isinstance(node, Operator):
                     if isinstance(node.left, Operator):
-                        if node.left.priority < node.priority:
+                        if node.left.priority > node.priority:
                             left_string = '(' + left_string[1:-1] + ')'
                     if isinstance(node.right, Operator):
-                        if node.right.priority < node.priority:
+                        if node.right.priority > node.priority:
                             right_string = '(' + right_string[1:-1] + ')'
                 return left_string + ' ' + str(node) + ' ' + right_string
             else:
@@ -271,7 +271,7 @@ class Problem():
                 elif parent.right == operator:
                     parent.right = result   
     
-    def use_commutativity(self, operator):
+    def use_commutativity(self, operator: Operator):
         if not isinstance(operator, Operator): return
         if not operator.commutativity: raise NoCommutativity(operator)
 
@@ -287,7 +287,7 @@ symbols_operators = {
     '^' : Pow
 }
 
-def make_problem(string: str) -> Problem:
+def make_problem_tree(string: str) -> ProblemTree:
     string = string.replace(' ', '')
 
     def get_priority(char: str) -> int:
@@ -349,12 +349,16 @@ def make_problem(string: str) -> Problem:
         return node
             
     root = recursive_make_node(string)
-    return Problem(root)
+    return ProblemTree(root)
 
 #####################################################################################
 
-class ProblemList():
-    def make_list(problem : Problem) -> list:
+class ProblemList(ProblemTree):
+    def __init__(self, node: Node = Number(0)):
+        super().__init__(node)
+        self.nodes_list = self.make_list()
+
+    def make_list(self) -> list:
         def recursive_make_list(node : Node) -> list:
             if node is None: return []
             if isinstance(node, Value):
@@ -368,45 +372,54 @@ class ProblemList():
                     if node.right.priority > node.priority:  right = ['('] + right + [')'] 
                 return left + [node] + right
         
-        return recursive_make_list(problem.root)
-    
-    def __init__(self, problem: Problem):
-        self.problem_tree = problem
-        self.problem_list = ProblemList.make_list(problem)
+        return recursive_make_list(self.root)
 
     def __str__(self):
         string = ''
-        for node in self.problem_list:
-            string += str(node) + ' '
-        return string[:-1]
+        nodes_iter = iter(self.nodes_list)
+        for node in nodes_iter:
+            string += str(node) 
+            if node != '(': string += ' '
+            if node == ')':
+                string += '\b\b\b) '
+        return string
     
+    def len_string(self):
+        return len(str(self))
+   
     def __getitem__(self, index): 
-        return self.problem_list[index]
+        return self.nodes_list[index]
     
     def __iter__(self): 
-        return self.problem_list 
-
+        return iter(self.nodes_list) 
+    
+    def len_list(self):
+        return len(self.nodes_list)
+    
+    def get_node(self, index) -> Node:
+        nodes_list = [node for node in self.nodes_list if isinstance(node, Node)]
+        return nodes_list[index]
+    
+    def get_value(self, index) -> Value:
+        values_list = [node for node in self.nodes_list if isinstance(node, Value)]
+        return values_list[index]
+    
+    def get_operator(self, index) -> Operator:
+        operators_list = [node for node in self.nodes_list if isinstance(node, Operator)]
+        return operators_list[index]
 
     def use_operator(self, operator):
-        self.problem_tree.use_operator(operator)
-        self.problem_list = ProblemList.make_list(self.problem_tree)
+        super().use_operator(operator)
+        self.nodes_list = self.make_list()
 
     def use_commutativity(self, operator):
-        self.problem_tree.use_commutativity(operator)
-        self.problem_list = ProblemList.make_list(self.problem_tree)
-
-    
-
+        super().use_commutativity(operator)
+        self.nodes_list = self.make_list()
 
 #####################################################################################
 
-
+def make_problem_list(string: str) -> ProblemList:
+    tree = make_problem_tree(string)
+    return ProblemList(tree.root)
 
 #####################################################################################
-
-a = make_problem('((-3 - 5)+ 3 * 4) / ((34 - 3) * 4)')
-pl = ProblemList(a)
-print(pl)
-pl.use_operator(pl[2])
-print(pl)
-

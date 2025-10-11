@@ -7,49 +7,52 @@ CENTER = (WIDTH // 2, HEIGHT // 2)
 
 arcade.load_font('resourses/BetterVCR/BetterVCR.ttf')
 
-class ExampleSymbol():
-    def __init__(self, example: problem.Problem, node: problem.Node, x: int, y: int, color = arcade.color.WHITE):
+FONT_SIZE = 25.0
+
+class ButtonSymbol(arcade.Sprite):
+    def __init__(self, example: problem.ProblemList, node: problem.Node, x, y, depth = 1):
+        text_sprite = arcade.create_text_sprite(
+            text=str(node),
+            color=arcade.color.WHITE,
+            font_size=FONT_SIZE / depth,
+            font_name='Better VCR',
+            anchor_x='center'
+        )
+        super().__init__(
+            text_sprite.texture, 
+            text_sprite.scale,
+            x, y,
+            )
+
         self.example = example
         self.node = node
-        self.sprite: arcade.Sprite = arcade.create_text_sprite(
-            str(node),
-            color = arcade.color.WHITE,
-            font_size = 12.0,
-            font_name = 'Better VCR'
-        )
-        self.sprite.position = [x, y]
 
     def click(self):
         if isinstance(self.node, problem.Operator):
-            a = self.example.use_operator(self.node)
+            self.example.use_operator(self.node)
             print('оператор:', self.node)
 
         if isinstance(self.node, problem.Value):
             print('значение:', self.node)
 
 class ExampleSolution(arcade.View):
-    def __init__(self, example: problem.Problem = problem.Problem(problem.Number(0))):
+    def __init__(self, example: problem.ProblemList = problem.ProblemList(problem.Number(0))):
         super().__init__()
         self.background_color = arcade.color.BLACK
         self.example = example
-        self.symbols = []
         self.sprites = arcade.SpriteList()
         self.make_symbols()
     
     def make_symbols(self):
-        def recursive_make_symbols(node: problem.Node, x, y):
-            new_symbol = ExampleSymbol(self.example, node, x, y)
-            self.symbols.append(new_symbol)
-            self.sprites.append(new_symbol.sprite)
-
-            if node.left != None: 
-                recursive_make_symbols(node.left, x - node.recursive_len() * 5, y)
-            if node.right != None: 
-                recursive_make_symbols(node.right, x + node.recursive_len() * 5, y)
-
-        self.symbols.clear()
-        self.sprites.clear()
-        recursive_make_symbols(self.example.root, CENTER[0], CENTER[1])
+        len_example =  self.example.len_string() * 50.0
+        current_x, current_y = CENTER[0] - len_example / 2, CENTER[1]
+        current_depth = 1
+        for node in self.example:
+            self.sprites.append(
+                ButtonSymbol(self.example, node, current_x, current_y)
+            )
+            current_x += 100.0
+            
 
     def reset(self):
         pass
@@ -73,7 +76,7 @@ def main():
 
 
     #example = problem.make_problem('((-(3) - 5)+ 3 * 4) / ((34 - 3) * 4)')
-    example = problem.make_problem('(-(3) - 5) + 3 * 4')
+    example = problem.make_problem_list('(-(3) - 5) + 3 * 4')
     game = ExampleSolution(example) 
     game.reset()
 
