@@ -9,13 +9,15 @@ arcade.load_font('resourses/BetterVCR/BetterVCR.ttf')
 
 FONT_SIZE = 25.0
 
+SYMBOL_SIZE= [24.75, 33]
+
+
 class ButtonSymbol(arcade.Sprite):
     def __init__(self, example: problem.ProblemList, node: problem.Node, x, y, depth = 1):
         text_sprite = arcade.create_text_sprite(
             text=str(node),
             color=arcade.color.WHITE,
             font_size=FONT_SIZE / depth,
-            font_name='Better VCR',
             anchor_x='center'
         )
         super().__init__(
@@ -44,14 +46,15 @@ class ExampleSolution(arcade.View):
         self.make_symbols()
     
     def make_symbols(self):
-        len_example =  self.example.len_string() * 50.0
-        current_x, current_y = CENTER[0] - len_example / 2, CENTER[1]
+        example_width = self.example.len_string() * SYMBOL_SIZE[0]
+        current_x, current_y = CENTER[0] - example_width / 2, CENTER[1]
         current_depth = 1
         for node in self.example:
+            print(node)
             self.sprites.append(
                 ButtonSymbol(self.example, node, current_x, current_y)
             )
-            current_x += 100.0
+            current_x += 3 * SYMBOL_SIZE[0]
             
 
     def reset(self):
@@ -74,9 +77,7 @@ class ExampleSolution(arcade.View):
 def main():
     window = arcade.Window(WIDTH, HEIGHT, 'Reshator 3000')
 
-
-    #example = problem.make_problem('((-(3) - 5)+ 3 * 4) / ((34 - 3) * 4)')
-    example = problem.make_problem_list('(-(3) - 5) + 3 * 4')
+    example = problem.make_problem_list('-3 - (5 + 3) * 4')
     game = ExampleSolution(example) 
     game.reset()
 
