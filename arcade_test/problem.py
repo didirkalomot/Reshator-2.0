@@ -29,21 +29,13 @@ class NoCommutativity(Bad):
 
 class Node:
     def __init__(self, left=None, right=None):
+        self.parent = None
         self.left = left
         self.right = right
 
     def __str__(self): return 'node'
     
     def __len__(self): return 0
-
-    """
-    def recursive_len(self) -> int:
-        if self.left != None: left_size = self.left.recursive_len() + 1
-        else: left_size = 0
-        if self.right != None: right_size = self.right.recursive_len() + 1
-        else: right_size = 0
-        return left_size + len(self) + right_size
-    """
 
 class Value(Node):
     def __init__(self, value):
@@ -114,16 +106,6 @@ class Operator(Node):
     def __str__(self): return 'operator'
     
     def __len__(self): return 1 
-
-    """
-    def recursive_len(self) -> int:
-        result = super().recursive_len()
-        if isinstance(self.left, Operator):
-            if self.left.priority < self.priority: result += 2
-        if isinstance(self.right, Operator):
-            if self.right.priority < self.priority: result += 2
-        return result
-    """
 
     def work(self):
         if isinstance(self.left, Operator): raise WrongPriority(self.left)
@@ -213,7 +195,6 @@ class Div(Operator):
         
 #####################################################################################
 
-
 class ProblemTree():
     def __init__(self, node: Node = Number(0)):
         self.root = node
@@ -257,7 +238,7 @@ class ProblemTree():
             return left_result
         return self.find_parent(current.right, child)
 
-    def use_operator(self, operator: Operator):
+    def operator_work(self, operator: Operator):
         if not isinstance(operator, Operator): return 
         result = operator.work()
         if result is None: return
@@ -271,11 +252,13 @@ class ProblemTree():
                 elif parent.right == operator:
                     parent.right = result   
     
-    def use_commutativity(self, operator: Operator):
+    def operator_commutativity(self, operator: Operator):
         if not isinstance(operator, Operator): return
         if not operator.commutativity: raise NoCommutativity(operator)
 
         operator.left, operator.right = operator.right, operator.left
+
+    def value_represent():pass
 
 #####################################################################################
 
@@ -334,18 +317,21 @@ def make_problem_tree(string: str) -> ProblemTree:
             except: 
                 return None
 
-    def recursive_make_node(string: str) -> Node:
+    def recursive_make_node(string: str, parent) -> Node:
         string = remove_brackets(string)
         if string == '' or string == ' ' or string == None: return None
 
         value = make_value(string)
-        if value != None: return value
+        if value != None:
+            value.parent = parent 
+            return value
 
         index = find_root_index(string)
         char = string[index]
         left = string[:index]
         right = string[index+1:]
-        node = symbols_operators[char](recursive_make_node(left), recursive_make_node(right))
+        node = symbols_operators[char](recursive_make_node(left, node), recursive_make_node(right, node))
+        node.parent = parent
         return node
             
     root = recursive_make_node(string)
@@ -408,12 +394,12 @@ class ProblemList(ProblemTree):
         operators_list = [node for node in self.nodes_list if isinstance(node, Operator)]
         return operators_list[index]
 
-    def use_operator(self, operator):
-        super().use_operator(operator)
+    def operator_work(self, operator):
+        super().operator_work(operator)
         self.nodes_list = self.make_list()
 
-    def use_commutativity(self, operator):
-        super().use_commutativity(operator)
+    def operator_commutativity(self, operator):
+        super().operator_commutativity(operator)
         self.nodes_list = self.make_list()
 
 #####################################################################################
