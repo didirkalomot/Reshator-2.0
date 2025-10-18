@@ -18,15 +18,6 @@ class Number(Value):
             self.value = value
 
     def __str__(self): return str(self.value)
-
-    def print_tree(self):
-        def recursive_print_tree(node: Node, depth = 0):
-            if node is None: return
-            string = '-' * depth + '[' + str(node) + ']'
-            print(string)
-            recursive_print_tree(node.left, depth+1)
-            recursive_print_tree(node.right, depth+1)
-        recursive_print_tree(self.root)
     
     def __len__(self): return len(str(self.value))
 
@@ -60,7 +51,7 @@ class Number(Value):
 
 class Letter(Value):
     def __init__(self, value: str):
-        if len(value) == 1 and value.isalpha():
+        if value[0].isalpha and (len(value) == 1 or value[0:].isdigit()):
             super().__init__(value)
         else: raise TypeError
 

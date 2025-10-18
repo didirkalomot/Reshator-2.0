@@ -2,10 +2,14 @@ import parse
 import nodes
 
 
-root = parse.create_problem_tree('+(1,2)')
+root = parse.create_problem_tree('+(~(1),/(-4,*(2, 5)))')
+
+root.print_tree()
+
+
 
 #####################################################################################
-
+"""
 class Problem():
     def __init__(self, node = Number(0)):
         self.root = node
@@ -68,7 +72,7 @@ class Problem():
     def operator_commutativity(self, operator):
         super().operator_commutativity(operator)
         self.nodes_list = self.make_list()
-
+"""
 ####################################################################################
 
 

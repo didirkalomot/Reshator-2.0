@@ -18,10 +18,11 @@ def create_problem_tree(string: str) -> nodes.Node:
         return string in operations
     
     def is_number(string: str) -> bool:
-        return string.replace('.', '').isdigit()
+        string = string.replace('.', '')
+        return string.isdigit() or (string[0] == '-' and string[1:].isdigit())
     
     def is_letter(string: str) -> bool:
-        return string[0].isalpha and (len(string) == 1 or string[0:].isdigit())
+        return string[0].isalpha and (len(string) == 1 or string[1:].isdigit())
     
     def find_all_operands(string: str) -> list[str]:
         balance = 0
