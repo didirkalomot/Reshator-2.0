@@ -2,7 +2,7 @@ import copy
 
 class Value:
     def __init__(self, value):
-        super().__init__()
+        self.parent = None
         self.value = value
 
     def __str__(self): return 'value'
@@ -84,8 +84,7 @@ class Node:
             branch = "└── " if is_last else "├── "
             print(f"{prefix}{branch}[{node}]")
         
-            if isinstance(node, Value):
-                return
+            if isinstance(node, Value): return
                 
             new_prefix = prefix + ("    " if is_last else "│   ")
             
@@ -113,9 +112,9 @@ class Node:
                     return
 
 class Operator(Node):
-    priority=None    
+    priority=None
 
-    def __init__(self, *operands):
+    def __init__(self, *operands: Node):
         super().__init__(*operands)
 
     @property
@@ -166,7 +165,7 @@ class Ternary(Binary):
 #######################################
 
 class Pow(Operator, Binary):
-    priority=1
+    priority=2
     
     def __init__(self, one, two):
         super().__init__(one, two)
@@ -181,7 +180,7 @@ class Pow(Operator, Binary):
             return None
 
 class UnaryMinus(Operator, Unary):
-    priority=2
+    priority=3
 
     def __init__(self, one):
         super().__init__(one)
@@ -195,7 +194,7 @@ class UnaryMinus(Operator, Unary):
             return None
                
 class Mult(Operator, Binary):
-    priority=3
+    priority=4
 
     def __init__(self, one, two):
         super().__init__(one, two)
@@ -210,7 +209,7 @@ class Mult(Operator, Binary):
             return None
 
 class Div(Operator, Binary):
-    priority=3
+    priority=4
 
     def __init__(self, one, two):
         super().__init__(one, two)
@@ -225,7 +224,7 @@ class Div(Operator, Binary):
             return None
         
 class BinaryMinus(Operator, Binary):
-    priority=4
+    priority=5
 
     def __init__(self, one, two):
         super().__init__(one, two)
@@ -239,7 +238,7 @@ class BinaryMinus(Operator, Binary):
             return None
                 
 class Plus(Operator, Binary):
-    priority = 4
+    priority = 5
 
     def __init__(self, one, two):
         super().__init__(one, two)
