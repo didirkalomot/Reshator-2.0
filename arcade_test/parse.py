@@ -40,8 +40,8 @@ def create_problem_tree(string: str) -> nodes.Node:
         return operands
 
     def recursive_create_nodes(string: str) -> nodes.Node:
-        if is_number(string): return nodes.Number(float(string))
-        elif is_letter(string): return nodes.Letter(string)
+        if is_number(string): return nodes.Number(float(string)); 
+        elif is_letter(string): return nodes.Letter(string)    
         else:
             end_name = string.find('(')
             name = string[:end_name]
@@ -56,6 +56,7 @@ def create_problem_tree(string: str) -> nodes.Node:
                     node_operands.append(node)
 
             return operations[name](*node_operands)
+        
         
     string = string.replace(' ', '')
     return recursive_create_nodes(string)

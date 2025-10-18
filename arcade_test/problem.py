@@ -6,6 +6,25 @@ root = parse.create_problem_tree('+(~(1),/(-4,*(2, 5)))')
 
 root.print_tree()
 
+root.operands[0].work()
+
+root.print_tree()
+
+root.operands[1].operands[1].work()
+
+root.print_tree()
+
+root.operands[1].work()
+
+root.print_tree()
+
+all_is_values = all(isinstance(oper, nodes.Value) for oper in root.operands)
+if all_is_values: root = root.work();
+
+root.print_tree()
+
+
+
 
 
 #####################################################################################

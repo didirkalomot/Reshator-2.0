@@ -1,21 +1,42 @@
 import copy
 
-class Value:
-    def __init__(self, value):
+class Node:
+    def __init__(self):
         self.parent = None
+
+    def __str__(self): return 'node'
+
+    def print_tree(self): print(f'[{self}]')
+
+    def __copy__(self):
+        return copy.deepcopy(self)
+    
+    def replace(self, new):
+        if self.parent is not None:
+            for i, oper in enumerate(self.parent.operands):
+                if oper is self:
+                    self.parent.operands[i] = new
+                    new.parent = self.parent
+                    return
+
+class Value(Node):
+    def __init__(self, value):
         self.value = value
+        super().__init__()
 
     def __str__(self): return 'value'
     
     def __len__(self): return 1
 
+    def print_tree(self):
+        return '[' + str(self) + ']'
+
 class Number(Value):
     def __init__(self, value: float):
-        super().__init__(value)
         if value.is_integer():
-            self.value = int(value)
+            super().__init__(int(value))
         else:
-            self.value = value
+            super().__init__(value)
 
     def __str__(self): return str(self.value)
     
@@ -61,14 +82,20 @@ class Letter(Value):
 
 #####################################################################################
 
-class Node:
-    def __init__(self, *childs):
-        self.parent = None
-        self.operands = list(childs)
+class Operator(Node):
+    priority=None
+
+    def __init__(self, *operands: Node):
+        self.operands = list(operands)
         for node in self.operands:
             node.parent = self
+        super().__init__()
 
-    def __str__(self): return 'node'
+    @property
+    def arity(self):
+        return len(self.operands)
+
+    def __str__(self): return 'operator'
 
     def print_tree(self):
         def resursive_print_tree(node, is_last=True, prefix=""):
@@ -88,31 +115,6 @@ class Node:
             for i, oper in enumerate(self.operands):
                 is_last_operand = (i == len(self.operands) - 1)
                 resursive_print_tree(oper, is_last_operand, "")
-    
-    def __len__(self): return 0
-
-    def __copy__(self):
-        return copy.deepcopy(self)
-    
-    def replace(self, new):
-        if self.parent is not None:
-            for i, oper in enumerate(self.parent.operands):
-                if oper is self:
-                    self.parent.operands[i] = new
-                    new.parent = self.parent
-                    return
-
-class Operator(Node):
-    priority=None
-
-    def __init__(self, *operands: Node):
-        super().__init__(*operands)
-
-    @property
-    def arity(self):
-        return len(self.operands)
-
-    def __str__(self): return 'operator'
     
     def __len__(self): return 1 
 
