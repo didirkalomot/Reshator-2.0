@@ -7,12 +7,14 @@ operations = {
     '/' : nodes.Div,
     '+' : nodes.Plus,
     '-' : nodes.BinaryMinus,
-    #'sin' : nodes.Sin,
-    #'cos' : nodes.Cos,
-    #'log' : nodes.Log, 
+    'sin' : nodes.Sin,
+    'cos' : nodes.Cos,
+    'log' : nodes.Log, 
+    'lg' : nodes.Lg,
+    'ln' : nodes.Ln
 }
 
-def create_problem_tree(string: str) -> nodes.Node:
+def create_nodes_tree(string: str) -> nodes.Node:
 
     def is_operation(string: str) -> bool:
         return string in operations

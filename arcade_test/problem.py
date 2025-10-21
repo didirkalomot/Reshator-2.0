@@ -1,67 +1,45 @@
 import parse
 import nodes
 
-
-root = parse.create_problem_tree('+(~(1),/(-4,*(2, 5)))')
-
-root.print_tree()
-
-root.operands[0].work()
-
-root.print_tree()
-
-root.operands[1].operands[1].work()
-
-root.print_tree()
-
-root.operands[1].work()
-
-root.print_tree()
-
-all_is_values = all(isinstance(oper, nodes.Value) for oper in root.operands)
-if all_is_values: root = root.work();
-
-root.print_tree()
-
-
-
-
-
-#####################################################################################
-"""
 class Problem():
-    def __init__(self, node = Number(0)):
-        self.root = node
+    def __init__(self, root = nodes.Number(0)):
+        self.root = root
+        root.parent = self
         self.nodes_list = self.make_list()
 
     def make_list(self) -> list:
-        def recursive_make_list(node : Node) -> list:
-            if node is None: return []
-            if isinstance(node, Value):
-                return [node]
-            elif isinstance(node, Operator):
-                left = recursive_make_list(node.left)
-                right = recursive_make_list(node.right)
-                if isinstance(node.left, Operator):
-                    if node.left.priority > node.priority: left = ['('] + left + [')']
-                if isinstance(node.right, Operator):
-                    if node.right.priority > node.priority:  right = ['('] + right + [')'] 
-                return left + [node] + right
-        
+        def recursive_make_list(node: nodes.Node) -> list:
+            result = []
+            if isinstance(node, nodes.Value): result = [node]
+            elif isinstance(node, nodes.Operator):
+                if node.fixity == nodes.Fixity.PREFIX:
+                    result = [node, '(']
+                    for o in node.operands:
+                        result = result + recursive_make_list(o)
+                    result = result + [')']
+                elif node.fixity == nodes.Fixity.INFIX:
+                    left = recursive_make_list(node.one)
+                    right = recursive_make_list(node.two)
+                    if isinstance(node.one, nodes.Operator):
+                        if node.one.priority > node.priority: left = ['('] + left + [')']
+                    if isinstance(node.two, nodes.Operator):
+                        if node.two.priority > node.priority: right = ['('] + right + [')']
+                    result = left + [node] + right  
+                else:
+                    result = ['(']
+                    for o in node.operands:
+                        result = result + recursive_make_list(o)
+                    result = result + [')', node]
+            return result
         return recursive_make_list(self.root)
 
     def __str__(self):
         string = ''
-        nodes_iter = iter(self.nodes_list)
-        for node in nodes_iter:
-            string += str(node) 
-            if node != '(': string += ' '
-            if node == ')':
-                string += '\b\b\b) '
+        for node in self.nodes_list:
+            string += str(node)
         return string
-    
-    def len_string(self):
-        return len(str(self))
+        
+    def len_string(self): return len(str(self))
    
     def __getitem__(self, index): 
         return self.nodes_list[index]
@@ -69,29 +47,41 @@ class Problem():
     def __iter__(self): 
         return iter(self.nodes_list) 
     
-    def len_list(self):
+    def __len__(self):
         return len(self.nodes_list)
     
-    def get_node(self, index) -> Node:
-        nodes_list = [node for node in self.nodes_list if isinstance(node, Node)]
+    def get_node(self, index) -> nodes.Node:
+        nodes_list = [node for node in self.nodes_list if isinstance(node, nodes.Node)]
         return nodes_list[index]
     
-    def get_value(self, index) -> Value:
-        values_list = [node for node in self.nodes_list if isinstance(node, Value)]
+    def get_value(self, index) -> nodes.Value:
+        values_list = [node for node in self.nodes_list if isinstance(node, nodes.Value)]
         return values_list[index]
     
-    def get_operator(self, index) -> Operator:
-        operators_list = [node for node in self.nodes_list if isinstance(node, Operator)]
+    def get_operator(self, index) -> nodes.Operator:
+        operators_list = [node for node in self.nodes_list if isinstance(node, nodes.Operator)]
         return operators_list[index]
 
-    def operator_work(self, operator):
+    def operator_work(self, operator: nodes.Operator):
+        print('operator_work')
         operator.work()
         self.nodes_list = self.make_list()
 
     def operator_commutativity(self, operator):
         super().operator_commutativity(operator)
         self.nodes_list = self.make_list()
-"""
+
 ####################################################################################
 
+def create_problem(string) -> Problem: 
+    root = parse.create_nodes_tree(string)
+    return Problem(root)
 
+
+A = create_problem('+(a, +(4, +(5, 4)))')
+
+print(A)
+A.operator_work(A.get_node(5))
+print(A)
+A.operator_work(A.get_operator(1))
+print(A)
