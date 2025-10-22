@@ -36,8 +36,8 @@ class Problem():
     def __str__(self):
         string = ''
         for node in self.nodes_list:
-            string += str(node)
-        return string
+            string += str(node) + ' '
+        return string[:-1]
         
     def len_string(self): return len(str(self))
    
@@ -77,15 +77,13 @@ def create_problem(string) -> Problem:
     return Problem(root)
 
 
-A = create_problem('+(a, +(1, +(2, 3)))')
+A = create_problem('/(2, /(3, log(2, 8)))')
 print(A)
-#print(A.root.print_tree())
 
-A.operator_work(A.get_operator(1))
+A.operator_work(A.get_operator(2))
 
 print(A)
 
 A.operator_work(A.get_operator(0))
 
 print(A)
-#print(A.root.print_tree())
