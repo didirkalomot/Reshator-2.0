@@ -18,6 +18,8 @@ class Node:
                     self.parent.operands[i] = new
                     new.parent = self.parent
 
+#####################################################################################
+
 class Value(Node):
     def __init__(self, value):
         self.value = value
@@ -82,10 +84,25 @@ class Fixity(enum.Enum):
         INFIX = 0
         POSTFIX = 1
 
+class Associativity(enum.Enum):
+    NONE = 0
+    LEFT = -1      
+    RIGHT = 1
+    BOTH = 2 
+
+#######################################
+
+class Binary:pass
+    
+
+#######################################
+
 class Operator(Node):
-    fixity = Fixity.PREFIX
-    arity = None
-    priority = None
+    fixity = Fixity.INFIX
+    arity = 2
+    priority = 1
+    left_associativity = Associativity.NONE
+    commutativity = False
     
     def __init__(self, *operands: Node):
         self.operands = list(operands)
@@ -103,12 +120,28 @@ class Operator(Node):
 
     @property
     def priority(self): return self.__class__.priority
+
+    @property
+    def associativity(self): return self.__class__.associativity
+
+    @property
+    def commutativity(self): return self.__class__.commutativity
      
     @property
     def one(self): return self.operands[0]
+
+    @one.setter  
+    def one(self, value: Node):
+        self.operands[0] = value
+        value.parent = self
         
     @property
     def two(self): return self.operands[1]
+
+    @two.setter
+    def two(self, value: Node):
+        self.operands[1] = value
+        value.parent = self
 
     def __str__(self): return 'operator'
 
@@ -136,11 +169,28 @@ class Operator(Node):
     def result(self) -> Value: return None
 
     def work(self):
-        print('work')
         result = self.result()
         if result is not None:
             self.replace(result)
+        elif self.arity == 2:
+            self.work_try_associativity()
+        
+    def work_try_associativity(self):
+        if self.associativity == Associativity.BOTH:
+            if isinstance(self.two, self.__class__):
+                self.left_associative()
+                self.one.work()
+            elif isinstance(self.one, self.__class__):
+                self.right_associative()
+                self.two.work()
+        elif self.associativity == Associativity.LEFT and isinstance(self.two, self.__class__):
+            self.left_associative()
+            self.one.work()
+        elif self.associativity == Associativity.RIGHT and isinstance(self.one, self.__class__):
+            self.right_associative()
+            self.two.work()
 
+        
     def solve(self):
         for i, operand in enumerate(self.operands):
             if isinstance(operand, Operator):
@@ -149,13 +199,31 @@ class Operator(Node):
                     self.operands[i] = new_operand
         result = self.work()
         return result if result is not None else self
+
+    def left_associative(self):
+        if self.associativity == Associativity.LEFT or Associativity.BOTH:
+            if isinstance(self.two, self.__class__):
+                self.one = self.__class__(self.one, self.two.one)
+                self.two = self.two.two
     
-#######################################
+    def right_associative(self):
+        if self.associativity == Associativity.RIGHT or Associativity.BOTH:
+            if isinstance(self.one, self.__class__):
+                self.two = self.__class__(self.one.two, self.two)
+                self.one = self.one.one
+
+    def commutative(self):
+        if self.commutativity:
+            self.one, self.two = self.two, self.one
+    
+#####################################################################################
 
 class Sin(Operator):
     fixity = Fixity.PREFIX
     arity = 1
-    priority = 1
+    priority = 1                       
+    associativity = Associativity.NONE 
+    commutativity = False              
 
     def __int__(self, x):
         super().__init__(x)
@@ -171,7 +239,9 @@ class Sin(Operator):
 class Cos(Operator):
     fixity = Fixity.PREFIX
     arity = 1
-    priority = 1
+    priority = 1                       
+    associativity = Associativity.NONE 
+    commutativity = False              
 
     def __init__(self, x):
         super().__int__(x)
@@ -186,8 +256,10 @@ class Cos(Operator):
         
 class Log(Operator):
     fixity = Fixity.PREFIX
-    arity = 2
-    priority = 1
+    arity = 2                          
+    priority = 1                       
+    associativity = Associativity.NONE 
+    commutativity = False              
 
     def __init__(self, x, base):
         super().__init__(x, base)
@@ -223,9 +295,11 @@ class Ln(Log):
         return super().result()
 
 class Pow(Operator):
-    fixity = Fixity.INFIX
-    arity = 2
+    fixity = Fixity.INFIX 
+    arity = 2             
     priority = 2
+    associativity = Associativity.RIGHT
+    commutativity = False
     
     def __init__(self, base, degree): super().__init__(base, degree)
 
@@ -241,6 +315,8 @@ class UnaryMinus(Operator):
     fixity = Fixity.PREFIX
     arity = 1
     priority = 3
+    associativity = Associativity.NONE 
+    commutativity = False              
 
     def __init__(self, operand): super().__init__(operand)
 
@@ -253,9 +329,11 @@ class UnaryMinus(Operator):
             return None
                
 class Mult(Operator):
-    fixity = Fixity.INFIX
-    arity = 2
+    fixity = Fixity.INFIX             
+    arity = 2                          
     priority = 4
+    associativity = Associativity.BOTH
+    commutativity = True              
 
     def __init__(self, factor1, factor2): super().__init__(factor1, factor2)
 
@@ -268,9 +346,11 @@ class Mult(Operator):
             return None
 
 class Div(Operator):
-    fixity = Fixity.INFIX
-    arity = 2
+    fixity = Fixity.INFIX 
+    arity = 2             
     priority = 4
+    associativity = Associativity.LEFT
+    commutativity = False 
 
     def __init__(self, dividend, divisor): super().__init__(dividend, divisor)
 
@@ -283,9 +363,11 @@ class Div(Operator):
             return None
         
 class BinaryMinus(Operator):
-    fixity = Fixity.INFIX
-    arity = 2
+    fixity = Fixity.INFIX 
+    arity = 2            
     priority = 5
+    associativity = Associativity.LEFT
+    commutativity = False 
 
     def __init__(self, minuend, subtrahend): super().__init__(minuend, subtrahend)
 
@@ -298,9 +380,11 @@ class BinaryMinus(Operator):
             return None
                 
 class Plus(Operator):
-    fixity = Fixity.INFIX
-    arity = 2
+    fixity = Fixity.INFIX 
+    arity = 2             
     priority = 5
+    associativity = Associativity.BOTH
+    commutativity = True 
 
     def __init__(self, addend1, addend2): super().__init__(addend1, addend2)
         

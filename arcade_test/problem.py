@@ -63,12 +63,11 @@ class Problem():
         return operators_list[index]
 
     def operator_work(self, operator: nodes.Operator):
-        print('operator_work')
         operator.work()
         self.nodes_list = self.make_list()
 
-    def operator_commutativity(self, operator):
-        super().operator_commutativity(operator)
+    def operator_commutativity(self, operator: nodes.Operator):
+        operator.commutative()
         self.nodes_list = self.make_list()
 
 ####################################################################################
@@ -78,10 +77,15 @@ def create_problem(string) -> Problem:
     return Problem(root)
 
 
-A = create_problem('+(a, +(4, +(5, 4)))')
+A = create_problem('+(a, +(1, +(2, 3)))')
+print(A)
+#print(A.root.print_tree())
+
+A.operator_work(A.get_operator(1))
 
 print(A)
-A.operator_work(A.get_node(5))
+
+A.operator_work(A.get_operator(0))
+
 print(A)
-A.operator_work(A.get_operator(1))
-print(A)
+#print(A.root.print_tree())
