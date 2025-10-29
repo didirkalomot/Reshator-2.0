@@ -8,29 +8,25 @@ class Problem():
         self.nodes_list = self.make_list()
 
     def make_list(self) -> list:
-        def recursive_make_list(node: nodes.Node) -> list:
-            result = []
-            if isinstance(node, nodes.Value): result = [node]
-            elif isinstance(node, nodes.Operator):
-                if node.fixity == nodes.Fixity.PREFIX:
-                    result = [node, '(']
-                    for o in node.operands:
-                        result = result + recursive_make_list(o)
-                    result = result + [')']
-                elif node.fixity == nodes.Fixity.INFIX:
-                    left = recursive_make_list(node.one)
-                    right = recursive_make_list(node.two)
-                    if isinstance(node.one, nodes.Operator):
-                        if node.one.priority > node.priority: left = ['('] + left + [')']
-                    if isinstance(node.two, nodes.Operator):
-                        if node.two.priority > node.priority: right = ['('] + right + [')']
-                    result = left + [node] + right  
-                else:
-                    result = ['(']
-                    for o in node.operands:
-                        result = result + recursive_make_list(o)
-                    result = result + [')', node]
-            return result
+        def recursive_make_list(node: nodes.Node, parent=None, is_left=True) -> list:
+            if isinstance(node, nodes.Value): 
+                return [node]            
+            if isinstance(node, nodes.Operator):
+                if node.fixity is nodes.Fixity.PREFIX:
+                    return [node, '('] + [o for op in node.operands for o in recursive_make_list(op, node)] + [')']                
+                if node.fixity is nodes.Fixity.INFIX:
+                    left, right = recursive_make_list(node.one, node, True), recursive_make_list(node.two, node, False)                    
+                    for child, is_left_child, lst in [(node.one, True, left), (node.two, False, right)]:
+                        if isinstance(child, nodes.Operator) and (
+                            child.priority > node.priority or 
+                            (child.priority == node.priority and 
+                            ((node.associativity == nodes.Associativity.LEFT and not is_left_child) or
+                            (node.associativity == nodes.Associativity.RIGHT and is_left_child)))
+                        ):
+                            lst[:] = ['('] + lst + [')']                    
+                    return left + [node] + right                
+                return ['('] + [o for op in node.operands for o in recursive_make_list(op, node)] + [')', node]
+            return []
         return recursive_make_list(self.root)
 
     def __str__(self):
@@ -66,7 +62,7 @@ class Problem():
         operator.work()
         self.nodes_list = self.make_list()
 
-    def operator_commutativity(self, operator: nodes.Operator):
+    def operator_commutative(self, operator: nodes.Operator):
         operator.commutative()
         self.nodes_list = self.make_list()
 
@@ -77,13 +73,7 @@ def create_problem(string) -> Problem:
     return Problem(root)
 
 
-A = create_problem('/(2, /(3, log(2, 8)))')
+A = create_problem('-(-(1, 2),+(3, 4))')
 print(A)
-
-A.operator_work(A.get_operator(2))
-
-print(A)
-
-A.operator_work(A.get_operator(0))
-
+A.operator_work(A.get_operator(1))
 print(A)

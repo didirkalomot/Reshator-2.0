@@ -3,6 +3,7 @@ import enum
 import math
 
 class Node:
+
     def __init__(self): self.parent = None
 
     def __str__(self): return 'node'
@@ -10,6 +11,13 @@ class Node:
     def print_tree(self): print(f'[{self}]')
 
     def __copy__(self): return copy.deepcopy(self)
+
+    def __eq__(self, other):
+        if type(self) != type(other): return False
+        return self._equals(other)
+    
+    def _equals(self, other):
+        raise NotImplementedError
     
     def replace(self, new):
         if self.parent is not None:
@@ -29,48 +37,82 @@ class Value(Node):
     
     def __len__(self): return 1
 
-    def __eq__(self, other):
-        if isinstance(other, Value):
-            return self.value == other.value
-        return False
+    def _equals(self, other):
+        return self.value == other.value
+    
+    def __ne__(self, other): 
+        return not self == other
 
 class Number(Value):
     def __init__(self, value: float):
+        super().__init__(value)
+            
+    def __str__(self):
+        value = round(self.value, 4)
         if value.is_integer():
-            super().__init__(int(value))
-        else:
-            super().__init__(value)
-
-    def __str__(self): return str(self.value)
+            return str(int(value))
+        else: return str(value)
     
     def __len__(self): return len(str(self.value))
 
     def __add__(self, other):
         if isinstance(other, Number):
             return Number(self.value + other.value)
-        return None
+        return NotImplemented
 
     def __neg__(self): return Number(-self.value)
 
     def __sub__(self, other):
         if isinstance(other, Number):
             return Number(self.value - other.value)
-        return None
+        return NotImplemented
 
     def __mul__(self, other):
         if isinstance(other, Number):
             return Number(self.value * other.value)
-        return None
+        return NotImplemented
 
     def __truediv__(self, other):
         if isinstance(other, Number):
             return Number(self.value / other.value)
-        return None
+        return NotImplemented
 
     def __pow__(self, other):
         if isinstance(other, Number):
             return Number(self.value ** other.value)
-        return None
+        return NotImplemented
+    
+    def __float__(self): return float(self.value)
+
+    def __int__(self): return int(self.value)
+
+    def __gt__(self, other):    # >
+        if isinstance(other, Number):
+            return self.value > other.value
+        elif isinstance(other, (int, float)):
+            return self.value > other
+        return NotImplemented
+        
+    def __lt__(self, other):    # <
+        if isinstance(other, Number):
+            return self.value < other.value
+        elif isinstance(other, (int, float)):
+            return self.value < other
+        return NotImplemented
+    
+    def __ge__(self, other):    # >=
+        if isinstance(other, Number):
+            return self.value >= other.value
+        elif isinstance(other, (int, float)):
+            return self.value >= other
+        return NotImplemented
+    
+    def __le__(self, other):    # <=
+        if isinstance(other, Number):
+            return self.value <= other.value
+        elif isinstance(other, (int, float)):
+            return self.value <= other
+        return NotImplemented
 
 class Letter(Value):
     def __init__(self, value: str):
@@ -85,9 +127,9 @@ class Letter(Value):
 #####################################################################################
 
 class Fixity(enum.Enum):
-        PREFIX = -1
-        INFIX = 0
-        POSTFIX = 1
+    PREFIX = -1
+    INFIX = 0
+    POSTFIX = 1
 
 class Associativity(enum.Enum):
     NONE = 0
@@ -104,7 +146,6 @@ class Operator(Node):
     associativity = Associativity.NONE
     commutativity = False
 
-    
     def __init__(self, *operands: Node):
         self.operands = list(operands)
         for node in self.operands:
@@ -112,24 +153,24 @@ class Operator(Node):
         super().__init__()
 
     @property
-    def fixity(self): return self.__class__.priority
+    def fixity(self) -> Fixity: return self.__class__.priority
 
     @property
-    def arity(self):
-        if self.__class__.arity == None: return len(self.operands)
+    def arity(self) -> int:
+        if self.__class__.arity is None: return len(self.operands)
         else: return self.__class__.arity
 
     @property
-    def priority(self): return self.__class__.priority
+    def priority(self) -> int: return self.__class__.priority
 
     @property
-    def associativity(self): return self.__class__.associativity
+    def associativity(self) -> Associativity: return self.__class__.associativity
 
     @property
-    def commutativity(self): self.__class__.commutativity
+    def commutativity(self) -> bool: self.__class__.commutativity
      
     @property
-    def one(self): return self.operands[0]
+    def one(self) -> Node: return self.operands[0]
 
     @one.setter  
     def one(self, value: Node):
@@ -137,7 +178,7 @@ class Operator(Node):
         value.parent = self
         
     @property
-    def two(self): return self.operands[1]
+    def two(self) -> Node: return self.operands[1]
 
     @two.setter
     def two(self, value: Node):
@@ -145,6 +186,11 @@ class Operator(Node):
         value.parent = self
 
     def __str__(self): return 'operator'
+
+    def _equals(self, other):
+        if len(self.operands) != len(other.operands):
+            return False
+        return all(a == b for a, b in zip(self.operands, other.operands))
 
     def print_tree(self):
         def resursive_print_tree(node, is_last=True, prefix=""):
@@ -167,12 +213,19 @@ class Operator(Node):
     
     def __len__(self): return 1 
 
+    def is_child(self, node: Node):
+        return any(n is node for n in self.operands)
+    
+    def is_descendant(self, node: Node):
+        return (self is node or 
+            any(isinstance(n, Operator) and n.is_descendant(node) 
+                for n in self.operands))
+
     def result(self) -> Value: return None
 
     def work(self):
-        result = self.result()
-        if result is not None:
-            self.replace(result)
+        if (result := self.result()) not in (None, NotImplemented):
+             self.replace(result)
 
     def solve(self):
         for i, operand in enumerate(self.operands):
@@ -183,50 +236,79 @@ class Operator(Node):
         result = self.work()
         return result if result is not None else self
 
-    def left_associative(self):
-        if self.associativity == Associativity.LEFT or Associativity.BOTH:
-            if isinstance(self.two, self.__class__):
-                self.one = self.__class__(self.one, self.two.one)
-                self.two = self.two.two
-    
-    def right_associative(self):
-        if self.associativity == Associativity.RIGHT or Associativity.BOTH:
-            if isinstance(self.one, self.__class__):
-                self.two = self.__class__(self.one.two, self.two)
-                self.one = self.one.one
-    
 #######################################
 
-class BinaryOperator(Operator):
+class Associative:
     def work(self):
-        result = self.result()
-        if result is not None:
-            self.replace(result)
-        elif self.arity == 2:
-            self.work_try_associativity()
-        
-    def work_try_associativity(self):
-        if self.associativity == Associativity.BOTH:
-            if isinstance(self.two, self.__class__):
-                self.left_associative()
-                self.one.work()
-            elif isinstance(self.one, self.__class__):
-                self.right_associative()
-                self.two.work()
-        elif self.associativity == Associativity.LEFT and isinstance(self.two, self.__class__):
-            self.left_associative()
-            self.one.work()
-        elif self.associativity == Associativity.RIGHT and isinstance(self.one, self.__class__):
-            self.right_associative()
-            self.two.work()
+        def do_work(operator: Operator):
+            if (result := operator.result()) not in (None, NotImplemented):
+                operator.replace(result)
+        do_work(self.associative())
 
+    def left_associative(self) -> Operator:
+        """a ∘ (b ∘ c) → (a ∘ b) ∘ c - возвращает self.one"""
+        current = self
+        while isinstance(current.two, self.__class__):
+            current.one = self.__class__(current.one, current.two.one)
+            current.two = current.two.two
+            current = current.one
+        return current
+                
+    def right_associative(self) -> Operator:
+        """(a ∘ b) ∘ c → a ∘ (b ∘ c) - возвращает self.two"""
+        current = self
+        while isinstance(current.one, self.__class__):
+            current.two = self.__class__(current.one.two, current.two)
+            current.one = current.one.one
+            current = current.two
+        return current  
+
+    def associative(self) -> Operator:
+        result = self
+        result = result.left_associative() if result.associativity in (Associativity.BOTH, Associativity.LEFT) else result
+        result = result.right_associative() if result.associativity in (Associativity.BOTH, Associativity.RIGHT) else result
+        return result
+        
+    def to_list(self):
+        operands = []
+        def collect(node):
+            if isinstance(node, self.__class__):
+                for op in node.operands:
+                    collect(op)
+            else: operands.append(node)
+        collect(self)
+        return operands
+
+    def from_list(self, operands):
+        if not operands: return self.neutral_element
+        result = operands[0]
+        for op in operands[1:]: 
+            result = self.__class__(result, op)
+        return result
+
+class Commutative:
     def commutative(self):
-        if self.commutativity:
+        """a ∘ b → b ∘ a - поменять операнды местами"""
+        if all(isinstance(oper, Value) for oper in self.operands):
             self.one, self.two = self.two, self.one
+
+class AssociativeCommutative(Associative, Commutative):
+    def commutative(self):
+        def do_commutative(operator: Operator):
+            operator.one, operator.two = operator.two, operator.one
+        do_commutative(self.associative())
+
+class Distributive:
+    distributive_over = [] # классы над которыми дистрибутивен
+
+    def find_root_subtree(self, node: Node):
+        while node.parent.__class__ in self.__class__.distributive_over:
+            node = node.parent
+        return node
 
 #####################################################################################
 
-class Plus(BinaryOperator):
+class Plus(AssociativeCommutative, Operator):
     fixity = Fixity.INFIX 
     arity = 2             
     priority = 5
@@ -241,10 +323,10 @@ class Plus(BinaryOperator):
     def result(self) -> Value:
         try:
             return self.one + self.two
-        except:
+        except Exception:
             return None
         
-class BinaryMinus(BinaryOperator):
+class BinaryMinus(Associative, Operator):
     fixity = Fixity.INFIX 
     arity = 2            
     priority = 5
@@ -258,10 +340,10 @@ class BinaryMinus(BinaryOperator):
     def result(self):
         try:
             return self.one - self.two
-        except: 
+        except Exception: 
             return None
 
-class Mult(BinaryOperator):
+class Mult(AssociativeCommutative, Operator):
     fixity = Fixity.INFIX             
     arity = 2                          
     priority = 4
@@ -275,10 +357,10 @@ class Mult(BinaryOperator):
     def result(self) -> Value:
         try:
             return self.one * self.two
-        except:
+        except Exception:
             return None
 
-class Div(BinaryOperator):
+class Div(Associative, Operator):
     fixity = Fixity.INFIX 
     arity = 2             
     priority = 4
@@ -290,12 +372,14 @@ class Div(BinaryOperator):
     def __str__(self): return '/'
 
     def result(self) -> Value:
+        if self.one == self.two: return Number(1)
+        if isinstance(self.two, Number) and self.two.value == 1: return self.one
         try:
             return self.one / self.two
-        except:
+        except Exception:
             return None
-               
-class Pow(BinaryOperator):
+                   
+class Pow(Associative, Operator):
     fixity = Fixity.INFIX 
     arity = 2             
     priority = 2
@@ -309,7 +393,7 @@ class Pow(BinaryOperator):
     def result(self) -> Value:
         try:
             return self.one ** self.two
-        except:
+        except Exception:
             return None
         
 class UnaryMinus(Operator):
@@ -326,13 +410,15 @@ class UnaryMinus(Operator):
     def result(self) -> Value:
         try:
             return -self.one
-        except:
+        except Exception:
             return None
 
 class Sin(Operator):
     fixity = Fixity.PREFIX
     arity = 1
-    priority = 1                                     
+    priority = 1   
+    associativity = Associativity.NONE 
+    commutativity = False                                   
 
     def __int__(self, x):
         super().__init__(x)
@@ -341,14 +427,16 @@ class Sin(Operator):
 
     def result(self) -> Value:
         try:
-            return math.sin(self.one)
-        except:
+            return Number(math.sin(self.one))
+        except Exception:
             return None
         
 class Cos(Operator):
     fixity = Fixity.PREFIX
     arity = 1
-    priority = 1                                     
+    priority = 1  
+    associativity = Associativity.NONE 
+    commutativity = False                                    
 
     def __init__(self, x):
         super().__int__(x)
@@ -357,8 +445,8 @@ class Cos(Operator):
 
     def result(self):
         try:
-            return math.cos(self.one)
-        except:
+            return Number(math.cos(self.one))
+        except Exception:
             return None
         
 class Log(Operator):
@@ -369,18 +457,24 @@ class Log(Operator):
     commutativity = False              
 
     def __init__(self, base, x):
+        if isinstance(base, Number):
+            if base <= 0 or base == 1: raise ValueError(f'основание логарифма: {base}')
         super().__init__(base, x)
 
     def __str__(self): return 'log'
 
     def result(self):
         try:
-            return math.log(self.two, self.one)
-        except:
+            return Number(math.log(self.two, self.one))
+        except Exception:
             return None
         
 class Lg(Log):
+    fixity = Fixity.PREFIX
     arity = 1
+    priority = 1                       
+    associativity = Associativity.NONE 
+    commutativity = False 
 
     def __init__(self, x):
         super().__init__(10, x)
@@ -391,7 +485,11 @@ class Lg(Log):
         return super().result()
     
 class Ln(Log):
+    fixity = Fixity.PREFIX
     arity = 1
+    priority = 1                       
+    associativity = Associativity.NONE 
+    commutativity = False 
 
     def __init__(self, x):
         super().__init__(math.e, x)
