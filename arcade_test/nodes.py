@@ -1,8 +1,23 @@
 import copy
 import enum
 import math
+from collections import Counter
+
+def action(key):
+    def decorator(func):
+        func.action_key = key
+    return decorator
 
 class Node:
+    actions = set()
+
+    def __init_subclass__(cls):
+        super().__init_subclass__()
+        cls.actions = set()
+        for attr_name in dir(cls):
+            attr = getattr(cls, attr_name)
+            if callable(attr) and hasattr(attr, 'action_key'):
+                cls.actions.add(attr)
 
     def __init__(self): self.parent = None
 
@@ -16,8 +31,11 @@ class Node:
         if type(self) != type(other): return False
         return self._equals(other)
     
-    def _equals(self, other):
-        raise NotImplementedError
+    def _equals(self, other): raise NotImplementedError()
+
+    def __hash__(self): return self._hash()
+
+    def _hash(self): raise NotImplementedError
     
     def replace(self, new):
         if self.parent is not None:
@@ -37,11 +55,11 @@ class Value(Node):
     
     def __len__(self): return 1
 
-    def _equals(self, other):
-        return self.value == other.value
+    def _equals(self, other): return self.value == other.value
     
-    def __ne__(self, other): 
-        return not self == other
+    def _hash(self): return hash(self.value)
+    
+    def __ne__(self, other): return not self == other
 
 class Number(Value):
     def __init__(self, value: float):
@@ -188,9 +206,11 @@ class Operator(Node):
     def __str__(self): return 'operator'
 
     def _equals(self, other):
-        if len(self.operands) != len(other.operands):
-            return False
+        if len(self.operands) != len(other.operands): return False
         return all(a == b for a, b in zip(self.operands, other.operands))
+
+    def _hash(self):
+        return hash((self.__class__,) + tuple(hash(op) for op in self.operands))
 
     def print_tree(self):
         def resursive_print_tree(node, is_last=True, prefix=""):
@@ -268,25 +288,16 @@ class Associative:
         result = result.left_associative() if result.associativity in (Associativity.BOTH, Associativity.LEFT) else result
         result = result.right_associative() if result.associativity in (Associativity.BOTH, Associativity.RIGHT) else result
         return result
-        
-    def to_list(self):
-        operands = []
-        def collect(node):
-            if isinstance(node, self.__class__):
-                for op in node.operands:
-                    collect(op)
-            else: operands.append(node)
-        collect(self)
-        return operands
-
-    def from_list(self, operands):
-        if not operands: return self.neutral_element
-        result = operands[0]
-        for op in operands[1:]: 
-            result = self.__class__(result, op)
-        return result
 
 class Commutative:
+    def _equals(self, other):
+        if len(self.operands) != len(other.operands): return False
+        return Counter(self.operands) == Counter(other.operands)
+
+    def _hash(self):
+        sorted_hashes = tuple(sorted(hash(op) for op in self.operands))
+        return hash((self.__class__,) + sorted_hashes)
+
     def commutative(self):
         """a ∘ b → b ∘ a - поменять операнды местами"""
         if all(isinstance(oper, Value) for oper in self.operands):
@@ -299,13 +310,86 @@ class AssociativeCommutative(Associative, Commutative):
         do_commutative(self.associative())
 
 class Distributive:
-    distributive_over = [] # классы над которыми дистрибутивен
+    distributive_over: tuple[type, ...] = ()  
 
-    def find_root_subtree(self, node: Node):
-        while node.parent.__class__ in self.__class__.distributive_over:
-            node = node.parent
-        return node
+    @classmethod
+    def factor_out(cls, *args: Node):
+        max_parent = cls.get_max_node(args[0].parent)
+        sum_class = max_parent.__class__
 
+        if sum_class not in cls.distributive_over:
+            raise ValueError(f'{cls.__name__} не дистрибутивен над {sum_class.__name__}')
+        if len({arg.parent.__class__ for arg in args}) != 1:
+            raise ValueError('Разные операторы у аргументов')
+        if len(set(args)) != 1:
+            raise ValueError('Аргументы не равны')
+        
+        nodes_list = Distributive.to_list(max_parent)
+        
+        all_children = [child for op in nodes_list if isinstance(op, Operator) 
+                       for child in op.operands]
+        if any(arg not in all_children for arg in args):
+            raise ValueError('Аргументы из разных сумм')
+
+        touch_nodes = [op for op in nodes_list if isinstance(op, Operator) 
+                    and any(op.is_child(arg) for arg in args)]
+        other_nodes = [n for n in nodes_list if n not in touch_nodes]
+
+        coefficients = []
+        for arg in args:
+            parent = arg.parent
+            coefficients.append(parent.operands[1] if parent.operands[0] == arg 
+                              else parent.operands[0])
+
+        sum_of_coefs = Distributive.from_list(sum_class, coefficients)
+        factored_part = cls(sum_of_coefs, args[0])
+        
+        new_expression = (Distributive.from_list(sum_class, other_nodes + [factored_part])
+                         if other_nodes else factored_part)
+
+        max_parent.replace(new_expression)
+
+    @classmethod
+    def get_max_node(cls, operator: Operator) -> Operator:
+        parent = operator.parent
+        while cls.is_dist_over(parent.__class__):
+            operator, parent = parent, parent.parent
+        return operator
+    
+    @classmethod
+    def is_dist_over(cls, node_cls: type) -> bool:
+        return node_cls in cls.distributive_over
+    
+    @staticmethod
+    def to_list(node):
+        if node.associativity == Associativity.NONE:
+            return node.operands
+        operands = []
+        def collect(n):
+            if isinstance(n, node.__class__) and n.associativity != Associativity.NONE:
+                for op in n.operands:
+                    collect(op)
+            else:
+                operands.append(n)
+        collect(node)
+        return operands
+
+    @staticmethod
+    def from_list(cls, operands):
+        if not operands: return None
+        if len(operands) == 1: return operands[0]
+        
+        if cls.associativity == Associativity.RIGHT:
+            result = operands[-1]
+            for i in range(len(operands)-2, -1, -1):
+                result = cls(operands[i], result)
+            return result
+        else:
+            result = operands[0]
+            for op in operands[1:]:
+                result = cls(result, op)
+            return result
+        
 #####################################################################################
 
 class Plus(AssociativeCommutative, Operator):
@@ -343,7 +427,9 @@ class BinaryMinus(Associative, Operator):
         except Exception: 
             return None
 
-class Mult(AssociativeCommutative, Operator):
+class Mult(AssociativeCommutative, Distributive, Operator):
+    distributive_over = (Plus, BinaryMinus)
+
     fixity = Fixity.INFIX             
     arity = 2                          
     priority = 4
@@ -456,7 +542,7 @@ class Log(Operator):
     associativity = Associativity.NONE 
     commutativity = False              
 
-    def __init__(self, base, x):
+    def __init__(self, base: Node, x: Node):
         if isinstance(base, Number):
             if base <= 0 or base == 1: raise ValueError(f'основание логарифма: {base}')
         super().__init__(base, x)
@@ -465,38 +551,44 @@ class Log(Operator):
 
     def result(self):
         try:
-            return Number(math.log(self.two, self.one))
+            return Number(math.log(self.two.value, self.one.value))
         except Exception:
             return None
         
-class Lg(Log):
+class Lg(Operator):
     fixity = Fixity.PREFIX
     arity = 1
     priority = 1                       
     associativity = Associativity.NONE 
     commutativity = False 
 
-    def __init__(self, x):
-        super().__init__(10, x)
+    def __init__(self, x: Node):
+        super().__init__(x)
 
     def __str__(self): return 'lg'
 
     def result(self):
-        return super().result()
+        try:
+            return Number(math.log(self.one.value, 10))
+        except Exception:
+            return None
     
-class Ln(Log):
+class Ln(Operator):
     fixity = Fixity.PREFIX
     arity = 1
     priority = 1                       
     associativity = Associativity.NONE 
     commutativity = False 
 
-    def __init__(self, x):
-        super().__init__(math.e, x)
-    
+    def __init__(self, x: Node):
+        super().__init__(x)
+
     def __str__(self): return 'ln'
 
     def result(self):
-        return super().result()
+        try:
+            return Number(math.log(self.one.value, math.e))
+        except Exception:
+            return None
   
 #####################################################################################        

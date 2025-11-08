@@ -3,9 +3,20 @@ import nodes
 
 class Problem():
     def __init__(self, root = nodes.Number(0)):
-        self.root = root
+        self.operands = [root]
         root.parent = self
         self.nodes_list = self.make_list()
+
+    @property
+    def root(self):
+        return self.operands[0]
+    
+    @root.setter
+    def root(self, new):
+        self.operands[0] = new
+        new.parent = self
+
+    def replace_root(self, new_node): self.root = new_node
 
     def make_list(self) -> list:
         def recursive_make_list(node: nodes.Node, parent=None, is_left=True) -> list:
@@ -13,7 +24,7 @@ class Problem():
                 return [node]            
             if isinstance(node, nodes.Operator):
                 if node.fixity is nodes.Fixity.PREFIX:
-                    return [node, '('] + [o for op in node.operands for o in recursive_make_list(op, node)] + [')']                
+                    return [node, '('] + [o for operand in node.operands for o in recursive_make_list(operand, node)] + [')']                
                 if node.fixity is nodes.Fixity.INFIX:
                     left, right = recursive_make_list(node.one, node, True), recursive_make_list(node.two, node, False)                    
                     for child, is_left_child, lst in [(node.one, True, left), (node.two, False, right)]:
@@ -25,7 +36,7 @@ class Problem():
                         ):
                             lst[:] = ['('] + lst + [')']                    
                     return left + [node] + right                
-                return ['('] + [o for op in node.operands for o in recursive_make_list(op, node)] + [')', node]
+                return ['('] + [o for operand in node.operands for o in recursive_make_list(operand, node)] + [')', node]
             return []
         return recursive_make_list(self.root)
 
@@ -66,6 +77,12 @@ class Problem():
         operator.commutative()
         self.nodes_list = self.make_list()
 
+    def factor_out(self, *args):
+        if any(arg not in self.nodes_list for arg in args): 
+            raise ValueError(f'значения из друго-го примера')
+        args[0].parent.__class__.factor_out(*args)
+        self.nodes_list = self.make_list()
+
 ####################################################################################
 
 def create_problem(string) -> Problem: 
@@ -73,7 +90,13 @@ def create_problem(string) -> Problem:
     return Problem(root)
 
 
-A = create_problem('-(-(1, 2),+(3, 4))')
+A = create_problem('+(+(*(a, 1), *(2, a)), *(5, a))')
 print(A)
-A.operator_work(A.get_operator(1))
+A.operator_commutative(A.get_operator(0))
 print(A)
+A.factor_out(A.get_value(1), A.get_value(5))
+print(A)
+A.operator_commutative(A.get_operator(3))
+print(A)
+
+
