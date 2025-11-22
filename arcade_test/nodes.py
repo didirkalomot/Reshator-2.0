@@ -1,23 +1,24 @@
-import copy
+from copy import deepcopy
 import enum
 import math
 from collections import Counter
 
-def action(key):
+def action(name):
     def decorator(func):
-        func.action_key = key
+        func.action_name = name
     return decorator
 
 class Node:
     actions = set()
 
     def __init_subclass__(cls):
-        super().__init_subclass__()
         cls.actions = set()
         for attr_name in dir(cls):
             attr = getattr(cls, attr_name)
-            if callable(attr) and hasattr(attr, 'action_key'):
+            if callable(attr) and hasattr(attr, 'action_name'):
                 cls.actions.add(attr)
+
+    __slots__ = ['parent']
 
     def __init__(self): self.parent = None
 
@@ -25,7 +26,11 @@ class Node:
 
     def print_tree(self): print(f'[{self}]')
 
-    def __copy__(self): return copy.deepcopy(self)
+    def __deepcopy__(self, memo=None):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.parent = None
+        return result
 
     def __eq__(self, other):
         if type(self) != type(other): return False
@@ -47,6 +52,8 @@ class Node:
 #####################################################################################
 
 class Value(Node):
+    __slots__ = ['value']
+
     def __init__(self, value):
         self.value = value
         super().__init__()
@@ -60,6 +67,11 @@ class Value(Node):
     def _hash(self): return hash(self.value)
     
     def __ne__(self, other): return not self == other
+
+    def __deepcopy__(self, memo=None):
+        result = super().__deepcopy__(memo)
+        result.value = deepcopy(self.value, memo)
+        return result
 
 class Number(Value):
     def __init__(self, value: float):
@@ -164,8 +176,10 @@ class Operator(Node):
     associativity = Associativity.NONE
     commutativity = False
 
+    __slots__ = ['operands']
+
     def __init__(self, *operands: Node):
-        self.operands = list(operands)
+        self.operands: list[Node] = list(operands)
         for node in self.operands:
             node.parent = self
         super().__init__()
@@ -205,6 +219,13 @@ class Operator(Node):
 
     def __str__(self): return 'operator'
 
+    def __deepcopy__(self, memo=None):
+        result = super().__deepcopy__(memo)
+        result.operands = deepcopy(self.operands, memo)
+        for op in result.operands:
+            op.parent = result
+        return result
+        
     def _equals(self, other):
         if len(self.operands) != len(other.operands): return False
         return all(a == b for a, b in zip(self.operands, other.operands))
@@ -260,7 +281,7 @@ class Operator(Node):
 
 class Associative:
     def work(self):
-        def do_work(operator: Operator):
+        def do_work(operator):
             if (result := operator.result()) not in (None, NotImplemented):
                 operator.replace(result)
         do_work(self.associative())
@@ -305,23 +326,40 @@ class Commutative:
 
 class AssociativeCommutative(Associative, Commutative):
     def commutative(self):
-        def do_commutative(operator: Operator):
+        def do_commutative(operator):
             operator.one, operator.two = operator.two, operator.one
+            print(operator.one, operator.two)
         do_commutative(self.associative())
 
 class Distributive:
-    distributive_over: tuple[type, ...] = ()  
+    distributive_over: tuple[type, ...] = ()
+
+    @classmethod
+    def factor_in(cls, node: Node):
+        parent = node.parent
+        left, right = parent.operands
+        other = left if node is right else right
+        sum_class = other.__class__
+        
+        if not cls.is_dist_over(sum_class): return
+        
+        nodes_list = Distributive.to_list(other)
+        for i, operand in enumerate(nodes_list):
+            nodes_list[i] = cls(deepcopy(node), operand)
+        
+        new_sum = Distributive.from_list(sum_class, nodes_list)
+        parent.replace(new_sum)
 
     @classmethod
     def factor_out(cls, *args: Node):
         max_parent = cls.get_max_node(args[0].parent)
         sum_class = max_parent.__class__
-
-        if sum_class not in cls.distributive_over:
+        
+        if not cls.is_dist_over(sum_class):
             raise ValueError(f'{cls.__name__} не дистрибутивен над {sum_class.__name__}')
-        if len({arg.parent.__class__ for arg in args}) != 1:
+        if any(arg.parent.__class__ != cls for arg in args):
             raise ValueError('Разные операторы у аргументов')
-        if len(set(args)) != 1:
+        if any(arg != args[0] for arg in args[1:]):
             raise ValueError('Аргументы не равны')
         
         nodes_list = Distributive.to_list(max_parent)
@@ -361,7 +399,7 @@ class Distributive:
         return node_cls in cls.distributive_over
     
     @staticmethod
-    def to_list(node):
+    def to_list(node) -> list[Node]:
         if node.associativity == Associativity.NONE:
             return node.operands
         operands = []
@@ -375,7 +413,7 @@ class Distributive:
         return operands
 
     @staticmethod
-    def from_list(cls, operands):
+    def from_list(cls, operands) -> Node:
         if not operands: return None
         if len(operands) == 1: return operands[0]
         
