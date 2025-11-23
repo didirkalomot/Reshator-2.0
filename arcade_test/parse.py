@@ -1,20 +1,20 @@
-import nodes
+import ast
 
 operations = {
-    '^' : nodes.Pow,
-    '~' : nodes.UnaryMinus,
-    '*' : nodes.Mult,
-    '/' : nodes.Div,
-    '+' : nodes.Plus,
-    '-' : nodes.BinaryMinus,
-    'sin' : nodes.Sin,
-    'cos' : nodes.Cos,
-    'log' : nodes.Log, 
-    'lg' : nodes.Lg,
-    'ln' : nodes.Ln
+    '^' : ast.Pow,
+    '~' : ast.UnaryMinus,
+    '*' : ast.Mult,
+    '/' : ast.Div,
+    '+' : ast.Plus,
+    '-' : ast.BinaryMinus,
+    'sin' : ast.Sin,
+    'cos' : ast.Cos,
+    'log' : ast.Log, 
+    'lg' : ast.Lg,
+    'ln' : ast.Ln
 }
 
-def create_nodes_tree(string: str) -> nodes.Node:
+def create_ast_tree(string: str) -> ast.Node:
 
     def is_operation(string: str) -> bool:
         return string in operations
@@ -41,9 +41,9 @@ def create_nodes_tree(string: str) -> nodes.Node:
         operands.append(string[start:])
         return operands
 
-    def recursive_create_nodes(string: str) -> nodes.Node:
-        if is_number(string): return nodes.Number(float(string)); 
-        elif is_letter(string): return nodes.Letter(string)    
+    def recursive_create_ast(string: str) -> ast.Node:
+        if is_number(string): return ast.Number(float(string)); 
+        elif is_letter(string): return ast.Letter(string)    
         else:
             end_name = string.find('(')
             name = string[:end_name]
@@ -54,14 +54,14 @@ def create_nodes_tree(string: str) -> nodes.Node:
             node_operands = []
             for operand in operands:
                 if operand:  # проверяем, что операнд не пустой
-                    node = recursive_create_nodes(operand)
+                    node = recursive_create_ast(operand)
                     node_operands.append(node)
 
             return operations[name](*node_operands)
         
         
     string = string.replace(' ', '')
-    return recursive_create_nodes(string)
+    return recursive_create_ast(string)
 
         
         

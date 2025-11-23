@@ -1,30 +1,30 @@
 import parse
-import nodes
+import ast
 
 class Problem():
     def update_list(self) -> list:
-        def recursive_make_list(node: nodes.Node, parent=None, is_left=True) -> list:
-            if isinstance(node, nodes.Value): 
+        def recursive_make_list(node: ast.Node, parent=None, is_left=True) -> list:
+            if isinstance(node, ast.Value): 
                 return [node]            
-            if isinstance(node, nodes.Operator):
-                if node.fixity is nodes.Fixity.PREFIX:
+            if isinstance(node, ast.Operator):
+                if node.fixity is ast.Fixity.PREFIX:
                     return [node, '('] + [o for operand in node.operands for o in recursive_make_list(operand, node)] + [')']                
-                if node.fixity is nodes.Fixity.INFIX:
+                if node.fixity is ast.Fixity.INFIX:
                     left, right = recursive_make_list(node.one, node, True), recursive_make_list(node.two, node, False)                    
                     for child, is_left_child, lst in [(node.one, True, left), (node.two, False, right)]:
-                        if isinstance(child, nodes.Operator) and (
+                        if isinstance(child, ast.Operator) and (
                             child.priority > node.priority or 
                             (child.priority == node.priority and 
-                            ((node.associativity == nodes.Associativity.LEFT and not is_left_child) or
-                            (node.associativity == nodes.Associativity.RIGHT and is_left_child)))
+                            ((node.associativity == ast.Associativity.LEFT and not is_left_child) or
+                            (node.associativity == ast.Associativity.RIGHT and is_left_child)))
                         ):
                             lst[:] = ['('] + lst + [')']                    
                     return left + [node] + right                
                 return ['('] + [o for operand in node.operands for o in recursive_make_list(operand, node)] + [')', node]
             return []
-        self.nodes_list = recursive_make_list(self.root)
+        self.problem_list = recursive_make_list(self.root)
 
-    def __init__(self, root = nodes.Number(0)):
+    def __init__(self, root = ast.Number(0)):
         self.operands = [root]
         root.parent = self
         self.update_list()
@@ -44,61 +44,66 @@ class Problem():
 
     def __str__(self):
         string = ''
-        for node in self.nodes_list:
+        for node in self.problem_list:
             string += str(node) + ' '
         return string[:-1]
         
     def len_string(self): return len(str(self))
    
     def __getitem__(self, index): 
-        return self.nodes_list[index]
+        return self.problem_list[index]
     
     def __iter__(self): 
-        return iter(self.nodes_list) 
+        return iter(self.problem_list) 
     
     def __len__(self):
-        return len(self.nodes_list)
+        return len(self.problem_list)
     
-    def get_node(self, index) -> nodes.Node:
-        nodes_list = [node for node in self.nodes_list if isinstance(node, nodes.Node)]
-        return nodes_list[index]
+    @property
+    def nodes(self) -> list[ast.Node]:
+        return [node for node in self.problem_list if isinstance(node, ast.Node)]
     
-    def get_value(self, index) -> nodes.Value:
-        values_list = [node for node in self.nodes_list if isinstance(node, nodes.Value)]
-        return values_list[index]
+    @property
+    def values(self) -> list[ast.Value]:
+        return [value for value in self.problem_list if isinstance(value, ast.Value)]
     
-    def get_operator(self, index) -> nodes.Operator:
-        operators_list = [node for node in self.nodes_list if isinstance(node, nodes.Operator)]
-        return operators_list[index]
+    @property
+    def operators(self) -> list[ast.Operator]:
+        return [operator for operator in self.problem_list if isinstance(operator, ast.Operator)]  
 
-    def operator_work(self, operator: nodes.Operator):
+    def work(self, operator: ast.Operator):
         operator.work()
         self.update_list()
 
-    def operator_commutative(self, operator: nodes.Operator):
-        operator.commutative()
-        self.update_list()
+    def commutative(self, operator: ast.Operator):
+        if isinstance(operator, ast.Commutative):
+            operator.commutative()
+            self.update_list()
 
-    def factor_out(self, *args: nodes.Node):
+    def factor_out(self, *args: ast.Node):
         distributive_class = args[0].parent.__class__
-        if issubclass(distributive_class, nodes.Distributive):
+        if issubclass(distributive_class, ast.Distributive):
             distributive_class.factor_out(*args)
             self.update_list()
 
-    def factor_in(self, node: nodes.Node):
+    def factor_in(self, node: ast.Node, direction_right: bool = None):
         distributive_class = node.parent.__class__
-        if issubclass(distributive_class, nodes.Distributive):
-            distributive_class.factor_in(node)
+        if issubclass(distributive_class, ast.Distributive):
+            distributive_class.factor_in(node, direction_right)
             self.update_list()
 
 ####################################################################################
 
 def create_problem(string) -> Problem: 
-    root = parse.create_nodes_tree(string)
+    root = parse.create_ast_tree(string)
     return Problem(root)
 
 
-A = create_problem('')
+A = create_problem('*(*(c, +(1, 2)), *(a, b))')
+# c * ( 1 + 2 ) * a * b
 
 print(A)
-
+A.commutative(A.operators[5])
+print(A)
+A.factor_in(A.values[2])
+print(A)

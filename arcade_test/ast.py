@@ -215,16 +215,7 @@ class Operator(Node):
     @two.setter
     def two(self, value: Node):
         self.operands[1] = value
-        value.parent = self
-
-    def __str__(self): return 'operator'
-
-    def __deepcopy__(self, memo=None):
-        result = super().__deepcopy__(memo)
-        result.operands = deepcopy(self.operands, memo)
-        for op in result.operands:
-            op.parent = result
-        return result
+        value.parent = self    
         
     def _equals(self, other):
         if len(self.operands) != len(other.operands): return False
@@ -232,6 +223,15 @@ class Operator(Node):
 
     def _hash(self):
         return hash((self.__class__,) + tuple(hash(op) for op in self.operands))
+    
+    def __deepcopy__(self, memo=None):
+        result = super().__deepcopy__(memo)
+        result.operands = deepcopy(self.operands, memo)
+        for op in result.operands:
+            op.parent = result
+        return result
+    
+    def __str__(self): return 'operator'
 
     def print_tree(self):
         def resursive_print_tree(node, is_last=True, prefix=""):
@@ -323,13 +323,6 @@ class Commutative:
         """a ∘ b → b ∘ a - поменять операнды местами"""
         if all(isinstance(oper, Value) for oper in self.operands):
             self.one, self.two = self.two, self.one
-
-class AssociativeCommutative(Associative, Commutative):
-    def commutative(self):
-        def do_commutative(operator):
-            operator.one, operator.two = operator.two, operator.one
-            print(operator.one, operator.two)
-        do_commutative(self.associative())
 
 class Distributive:
     distributive_over: tuple[type, ...] = ()
@@ -428,6 +421,28 @@ class Distributive:
                 result = cls(result, op)
             return result
         
+class AssociativeCommutative(Associative, Commutative):
+    def commutative(self):
+        def do_commutative(operator):
+            operator.one, operator.two = operator.two, operator.one
+        do_commutative(self.associative())
+
+class AssociativeDistributive(Associative, Distributive):
+    @classmethod
+    def factor_in(cls, node: Node, direction_right: bool = None):
+        if direction_right is None:
+            super().factor_in(node)
+            return
+        
+        parent = node.parent
+        is_left = node is parent.operands[0]
+        
+        if is_left == direction_right:
+            super().factor_in(node)
+        elif isinstance(parent.parent, cls):  
+            parent.parent.associative()  
+            super().factor_in(node) 
+
 #####################################################################################
 
 class Plus(AssociativeCommutative, Operator):
@@ -465,7 +480,7 @@ class BinaryMinus(Associative, Operator):
         except Exception: 
             return None
 
-class Mult(AssociativeCommutative, Distributive, Operator):
+class Mult(AssociativeCommutative, AssociativeDistributive, Operator):
     distributive_over = (Plus, BinaryMinus)
 
     fixity = Fixity.INFIX             
