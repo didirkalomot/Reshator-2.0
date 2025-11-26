@@ -103,7 +103,5 @@ A = create_problem('*(*(c, +(1, 2)), *(a, b))')
 # c * ( 1 + 2 ) * a * b
 
 print(A)
-A.commutative(A.operators[5])
-print(A)
-A.factor_in(A.values[2])
+A.factor_in(A.values[3])
 print(A)

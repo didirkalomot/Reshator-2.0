@@ -345,7 +345,7 @@ class Distributive:
 
     @classmethod
     def factor_out(cls, *args: Node):
-        max_parent = cls.get_max_node(args[0].parent)
+        max_parent = cls.get_max_sum(args[0].parent)
         sum_class = max_parent.__class__
         
         if not cls.is_dist_over(sum_class):
@@ -381,7 +381,7 @@ class Distributive:
         max_parent.replace(new_expression)
 
     @classmethod
-    def get_max_node(cls, operator: Operator) -> Operator:
+    def get_max_sum(cls, operator: Operator) -> Operator:
         parent = operator.parent
         while cls.is_dist_over(parent.__class__):
             operator, parent = parent, parent.parent
@@ -406,7 +406,7 @@ class Distributive:
         return operands
 
     @staticmethod
-    def from_list(cls, operands) -> Node:
+    def from_list(cls, operands) -> Node | None:
         if not operands: return None
         if len(operands) == 1: return operands[0]
         
@@ -431,18 +431,41 @@ class AssociativeDistributive(Associative, Distributive):
     @classmethod
     def factor_in(cls, node: Node, direction_right: bool = None):
         if direction_right is None:
-            super().factor_in(node)
-            return
+            direction_right = cls.find_direction(node)
+            if direction_right is None:
+                return
         
         parent = node.parent
         is_left = node is parent.operands[0]
         
         if is_left == direction_right:
             super().factor_in(node)
-        elif isinstance(parent.parent, cls):  
-            parent.parent.associative()  
-            super().factor_in(node) 
+        elif isinstance(parent.parent, cls):
+            parent.parent.associative()
+            super().factor_in(node)
 
+    @classmethod
+    def find_direction(cls, node: Node) -> bool | None:
+        max_mult = cls.get_max_mult(node.parent)
+        nodes_list = cls.to_list(max_mult)
+        
+        node_index = nodes_list.index(node)
+
+        left_is_sum = (node_index > 0 and nodes_list[node_index-1].__class__ in cls.distributive_over)
+        right_is_sum = (node_index < len(nodes_list)-1 and nodes_list[node_index+1].__class__ in cls.distributive_over)
+        
+        if left_is_sum and right_is_sum: return None
+        elif left_is_sum: return False  
+        elif right_is_sum: return True  
+        else: return None 
+    
+    @classmethod
+    def get_max_mult(cls, operator: Operator) -> Operator:
+        parent = operator.parent
+        while isinstance(parent, cls):
+            operator, parent = parent, parent.parent
+        return operator
+    
 #####################################################################################
 
 class Plus(AssociativeCommutative, Operator):
