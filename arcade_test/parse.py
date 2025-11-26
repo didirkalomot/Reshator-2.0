@@ -53,7 +53,7 @@ def create_ast_tree(string: str) -> ast.Node:
 
             node_operands = []
             for operand in operands:
-                if operand:  # проверяем, что операнд не пустой
+                if operand:
                     node = recursive_create_ast(operand)
                     node_operands.append(node)
 
@@ -61,7 +61,4 @@ def create_ast_tree(string: str) -> ast.Node:
         
         
     string = string.replace(' ', '')
-    return recursive_create_ast(string)
-
-        
-        
+    return recursive_create_ast(string)   

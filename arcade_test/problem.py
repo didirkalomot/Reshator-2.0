@@ -99,9 +99,7 @@ def create_problem(string) -> Problem:
     return Problem(root)
 
 
-A = create_problem('*(*(c, +(1, 2)), *(a, b))')
-# c * ( 1 + 2 ) * a * b
-
+A = create_problem('*(*(+(+(1, 2), +(3, 4)), a), b)')
 print(A)
-A.factor_in(A.values[3])
+A.factor_in(A.values[4])
 print(A)

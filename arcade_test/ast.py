@@ -1,7 +1,6 @@
 from copy import deepcopy
 import enum
 import math
-from collections import Counter
 
 def action(name):
     def decorator(func):
@@ -36,11 +35,7 @@ class Node:
         if type(self) != type(other): return False
         return self._equals(other)
     
-    def _equals(self, other): raise NotImplementedError()
-
-    def __hash__(self): return self._hash()
-
-    def _hash(self): raise NotImplementedError
+    def _equals(self, other) -> bool: raise NotImplementedError()
     
     def replace(self, new):
         if self.parent is not None:
@@ -62,9 +57,9 @@ class Value(Node):
     
     def __len__(self): return 1
 
-    def _equals(self, other): return self.value == other.value
+    def _equals(self, other) -> bool: return self.value == other.value
     
-    def _hash(self): return hash(self.value)
+    def __hash__(self): return hash((self.__class__, self.value))
     
     def __ne__(self, other): return not self == other
 
@@ -217,12 +212,15 @@ class Operator(Node):
         self.operands[1] = value
         value.parent = self    
         
-    def _equals(self, other):
+    def _equals(self, other) -> bool:
         if len(self.operands) != len(other.operands): return False
         return all(a == b for a, b in zip(self.operands, other.operands))
 
-    def _hash(self):
-        return hash((self.__class__,) + tuple(hash(op) for op in self.operands))
+    def __hash__(self):
+        return hash((self.__class__,) + tuple(
+            op.value if isinstance(op, Value) else op.__class__ 
+            for op in self.operands
+        ))
     
     def __deepcopy__(self, memo=None):
         result = super().__deepcopy__(memo)
@@ -254,8 +252,8 @@ class Operator(Node):
     
     def __len__(self): return 1 
 
-    def is_child(self, node: Node):
-        return any(n is node for n in self.operands)
+    def is_child(self, node: Node): 
+        return any(operand is node for operand in self.operands)
     
     def is_descendant(self, node: Node):
         return (self is node or 
@@ -309,87 +307,6 @@ class Associative:
         result = result.left_associative() if result.associativity in (Associativity.BOTH, Associativity.LEFT) else result
         result = result.right_associative() if result.associativity in (Associativity.BOTH, Associativity.RIGHT) else result
         return result
-
-class Commutative:
-    def _equals(self, other):
-        if len(self.operands) != len(other.operands): return False
-        return Counter(self.operands) == Counter(other.operands)
-
-    def _hash(self):
-        sorted_hashes = tuple(sorted(hash(op) for op in self.operands))
-        return hash((self.__class__,) + sorted_hashes)
-
-    def commutative(self):
-        """a ∘ b → b ∘ a - поменять операнды местами"""
-        if all(isinstance(oper, Value) for oper in self.operands):
-            self.one, self.two = self.two, self.one
-
-class Distributive:
-    distributive_over: tuple[type, ...] = ()
-
-    @classmethod
-    def factor_in(cls, node: Node):
-        parent = node.parent
-        left, right = parent.operands
-        other = left if node is right else right
-        sum_class = other.__class__
-        
-        if not cls.is_dist_over(sum_class): return
-        
-        nodes_list = Distributive.to_list(other)
-        for i, operand in enumerate(nodes_list):
-            nodes_list[i] = cls(deepcopy(node), operand)
-        
-        new_sum = Distributive.from_list(sum_class, nodes_list)
-        parent.replace(new_sum)
-
-    @classmethod
-    def factor_out(cls, *args: Node):
-        max_parent = cls.get_max_sum(args[0].parent)
-        sum_class = max_parent.__class__
-        
-        if not cls.is_dist_over(sum_class):
-            raise ValueError(f'{cls.__name__} не дистрибутивен над {sum_class.__name__}')
-        if any(arg.parent.__class__ != cls for arg in args):
-            raise ValueError('Разные операторы у аргументов')
-        if any(arg != args[0] for arg in args[1:]):
-            raise ValueError('Аргументы не равны')
-        
-        nodes_list = Distributive.to_list(max_parent)
-        
-        all_children = [child for op in nodes_list if isinstance(op, Operator) 
-                       for child in op.operands]
-        if any(arg not in all_children for arg in args):
-            raise ValueError('Аргументы из разных сумм')
-
-        touch_nodes = [op for op in nodes_list if isinstance(op, Operator) 
-                    and any(op.is_child(arg) for arg in args)]
-        other_nodes = [n for n in nodes_list if n not in touch_nodes]
-
-        coefficients = []
-        for arg in args:
-            parent = arg.parent
-            coefficients.append(parent.operands[1] if parent.operands[0] == arg 
-                              else parent.operands[0])
-
-        sum_of_coefs = Distributive.from_list(sum_class, coefficients)
-        factored_part = cls(sum_of_coefs, args[0])
-        
-        new_expression = (Distributive.from_list(sum_class, other_nodes + [factored_part])
-                         if other_nodes else factored_part)
-
-        max_parent.replace(new_expression)
-
-    @classmethod
-    def get_max_sum(cls, operator: Operator) -> Operator:
-        parent = operator.parent
-        while cls.is_dist_over(parent.__class__):
-            operator, parent = parent, parent.parent
-        return operator
-    
-    @classmethod
-    def is_dist_over(cls, node_cls: type) -> bool:
-        return node_cls in cls.distributive_over
     
     @staticmethod
     def to_list(node) -> list[Node]:
@@ -404,8 +321,8 @@ class Distributive:
                 operands.append(n)
         collect(node)
         return operands
-
-    @staticmethod
+    
+    @classmethod
     def from_list(cls, operands) -> Node | None:
         if not operands: return None
         if len(operands) == 1: return operands[0]
@@ -420,12 +337,109 @@ class Distributive:
             for op in operands[1:]:
                 result = cls(result, op)
             return result
+
+class Commutative:
+    def __hash__(self):
+        return hash((self.__class__,) + tuple(sorted(
+            str(op.value) if isinstance(op, Value) else op.__class__.__name__
+            for op in self.operands
+        )))
+    
+    def _equals(self, other) -> bool:
+        return sorted(self.operands, key=hash) == sorted(other.operands, key=hash)
+
+    def commutative(self):
+        """a ∘ b → b ∘ a - поменять операнды местами"""
+        if all(isinstance(oper, Value) for oper in self.operands):
+            self.one, self.two = self.two, self.one
+
+class Distributive:
+    distributive_over: tuple[type[Associative], ...]
+
+    @classmethod
+    def factor_in(cls, node: Node):
+        parent = node.parent
+        left, right = parent.operands
+        other = left if node is right else right
+        sum_class = other.__class__
+        if not cls.is_dist_over(sum_class): return
+
+        create_node = (
+            lambda operands: cls(deepcopy(node), operands) 
+            if node is left else 
+            lambda operands: cls(operands, deepcopy(node)))
+        
+        nodes_list = sum_class.to_list(other)
+        for i, operand in enumerate(nodes_list):
+            nodes_list[i] = create_node(operand)
+        new_sum = sum_class.from_list(nodes_list)
+        parent.replace(new_sum)
+
+    @classmethod
+    def factor_out(cls, *args: Node):
+        max_parent = cls.get_max_sum(args[0].parent)
+        sum_class = max_parent.__class__
+        if not cls.is_dist_over(sum_class):
+            raise ValueError(f'{cls.__name__} не дистрибутивен над {sum_class.__name__}')
+        if any(arg.parent.__class__ != cls for arg in args):
+            raise ValueError('Разные операторы у аргументов')
+        if any(arg != args[0] for arg in args[1:]):
+            raise ValueError('Аргументы не равны')
+        nodes_list = sum_class.to_list(max_parent)
+        all_children = [child for op in nodes_list if isinstance(op, Operator) 
+                       for child in op.operands]
+        if any(arg not in all_children for arg in args):
+            raise ValueError('Аргументы из разных сумм')
+        
+        touch_nodes = [
+            op for op in nodes_list 
+            if isinstance(op, Operator) and any(op.is_child(arg) 
+            for arg in args)]
+        other_nodes = [n for n in nodes_list if n not in touch_nodes]
+        
+        coefficients = []
+        for arg in args:
+            parent = arg.parent
+            coefficients.append(
+                parent.operands[1] 
+                if parent.operands[0] == arg 
+                else parent.operands[0])
+            
+        sum_of_coefs = sum_class.from_list(coefficients)
+        factored_part = cls(sum_of_coefs, args[0])
+        new_expression = (sum_class.from_list(other_nodes + [factored_part])
+                         if other_nodes else factored_part)
+        
+        max_parent.replace(new_expression)
+
+    @classmethod
+    def get_max_sum(cls, operator: Operator) -> Operator:
+        parent = operator.parent
+        while cls.is_dist_over(parent.__class__):
+            operator, parent = parent, parent.parent
+        return operator
+    
+    @classmethod
+    def is_dist_over(cls, node_cls: type) -> bool:
+        return node_cls in cls.distributive_over
         
 class AssociativeCommutative(Associative, Commutative):
     def commutative(self):
         def do_commutative(operator):
             operator.one, operator.two = operator.two, operator.one
         do_commutative(self.associative())
+
+    def __hash__(self):
+        nodes_list = self.to_list(self)
+        return hash((self.__class__,) + tuple(sorted(
+            str(op.value) if isinstance(op, Value) else op.__class__.__name__
+            for op in nodes_list
+        )))
+    
+    def _equals(self, other) -> bool:
+        self_flat = self.to_list(self) 
+        other_flat = self.to_list(other)    
+        return sorted(self_flat, key=hash) == sorted(other_flat, key=hash)
 
 class AssociativeDistributive(Associative, Distributive):
     @classmethod
@@ -434,10 +448,8 @@ class AssociativeDistributive(Associative, Distributive):
             direction_right = cls.find_direction(node)
             if direction_right is None:
                 return
-        
         parent = node.parent
         is_left = node is parent.operands[0]
-        
         if is_left == direction_right:
             super().factor_in(node)
         elif isinstance(parent.parent, cls):
@@ -448,16 +460,10 @@ class AssociativeDistributive(Associative, Distributive):
     def find_direction(cls, node: Node) -> bool | None:
         max_mult = cls.get_max_mult(node.parent)
         nodes_list = cls.to_list(max_mult)
-        
         node_index = nodes_list.index(node)
-
         left_is_sum = (node_index > 0 and nodes_list[node_index-1].__class__ in cls.distributive_over)
         right_is_sum = (node_index < len(nodes_list)-1 and nodes_list[node_index+1].__class__ in cls.distributive_over)
-        
-        if left_is_sum and right_is_sum: return None
-        elif left_is_sum: return False  
-        elif right_is_sum: return True  
-        else: return None 
+        return None if left_is_sum == right_is_sum else right_is_sum
     
     @classmethod
     def get_max_mult(cls, operator: Operator) -> Operator:

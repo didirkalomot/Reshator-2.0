@@ -18,9 +18,10 @@ class WrongPriority(Bad):
 
     def __str__(self):
         return 'не тот порядок действий'
+    
 class NoCommutativity(Bad):
     def __init__(self, current):
         super().__init__(current, 2)
 
     def __str__(self):
-        return 'нет коммутативности'
+        return 'у этого элемента нет коммутативности'
