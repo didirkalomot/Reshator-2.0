@@ -3,6 +3,7 @@ import pstats
 import io
 from problem import create_problem
 import ast
+import parse  # импортируем модуль parse
 
 def profile_all_functions():
     """Профилирует ВСЕ функции проекта"""
@@ -12,7 +13,7 @@ def profile_all_functions():
     
     # ТЕСТИРУЕМ ВСЁ:
     
-    # 1. Парсинг и создание деревьев
+    # 1. Парсинг и создание деревьев - СРАВНЕНИЕ МЕТОДОВ
     expressions = [
         '*(a, +(b, c))',
         '*(*(c, +(1, 2)), *(a, b))', 
@@ -20,12 +21,27 @@ def profile_all_functions():
         'sin(+(a, b))'
     ]
     
-    problems = []
-    for expr in expressions * 50:  # Многократно
-        problems.append(create_problem(expr))
+    problems_recursive = []
+    problems_iterative = []
     
-    # 2. Все методы Problem
-    for A in problems[:10]:  # На подмножестве
+    # Рекурсивный парсинг
+    for expr in expressions * 25:  # 25 раз каждый
+        problems_recursive.append(create_problem(expr))  # использует старый рекурсивный
+    
+    # Итеративный парсинг  
+    for expr in expressions * 25:
+        try:
+            root = parse.create_ast_tree_iterative(expr)  # новый итеративный
+            problems_iterative.append(ast.Problem(root))
+        except Exception as e:
+            print(f"Ошибка в итеративном парсинге '{expr}': {e}")
+            # fallback на рекурсивный
+            problems_iterative.append(create_problem(expr))
+    
+    problems = problems_recursive + problems_iterative
+    
+    # 2. Все методы Problem (остальной код без изменений)
+    for A in problems[:10]:
         # Обновление списка
         for _ in range(20):
             A.update_list()
@@ -63,21 +79,14 @@ def profile_all_functions():
     for A in problems[:5]:
         if A.operators:
             op = A.operators[0]
-            # Ассоциативность
             if hasattr(op, 'associative'):
                 for _ in range(10):
                     op.associative()
-            
-            # Коммутативность  
             if hasattr(op, 'commutative'):
                 for _ in range(10):
                     op.commutative()
-            
-            # Решение
             for _ in range(5):
                 op.solve()
-            
-            # Сравнение и хеширование
             for _ in range(10):
                 _ = op == op
                 _ = hash(op)
@@ -94,9 +103,8 @@ def profile_all_functions():
     with open('profile_results.txt', 'w') as f:
         ps = pstats.Stats(pr, stream=f)
         ps.sort_stats('cumulative')
-        ps.print_stats(100)  # топ-100 функций
+        ps.print_stats(100)
     
     print("✅ Профилирование завершено! Смотри profile_results.txt")
-
 
 profile_all_functions()

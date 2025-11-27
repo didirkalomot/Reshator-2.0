@@ -141,7 +141,7 @@ class Number(Value):
 
 class Letter(Value):
     def __init__(self, value: str):
-        if value[0].isalpha and (len(value) == 1 or value[0:].isdigit()):
+        if value and value[0].isalpha():
             super().__init__(value)
         else: raise TypeError
 

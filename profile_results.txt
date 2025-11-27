@@ -1,107 +1,108 @@
-         45938 function calls (41788 primitive calls) in 0.059 seconds
+         50883 function calls (47236 primitive calls) in 0.147 seconds
 
    Ordered by: cumulative time
+   List reduced from 103 to 100 due to restriction <100>
 
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-      200    0.001    0.000    0.035    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:97(create_problem)
-      200    0.001    0.000    0.025    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:17(create_ast_tree)
- 1250/200    0.008    0.000    0.024    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:44(recursive_create_ast)
-      464    0.001    0.000    0.017    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:5(update_list)
- 2948/464    0.012    0.000    0.016    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:6(recursive_make_list)
-      200    0.000    0.000    0.008    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:27(__init__)
-    12988    0.005    0.000    0.005    0.000 {built-in method builtins.isinstance}
-      550    0.003    0.000    0.003    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:29(find_all_operands)
-     1250    0.002    0.000    0.003    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:22(is_number)
-      600    0.002    0.000    0.003    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:143(__init__)
-      200    0.002    0.000    0.003    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:45(__str__)
-     1150    0.002    0.000    0.002    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:26(is_letter)
-    89/59    0.000    0.000    0.002    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:34(__eq__)
-       25    0.000    0.000    0.002    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:74(work)
-      565    0.002    0.000    0.002    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:176(__init__)
-      248    0.001    0.000    0.002    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:70(operators)
-       40    0.000    0.000    0.002    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:439(_equals)
-      250    0.001    0.000    0.002    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:66(values)
-      116    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:311(to_list)
-      265    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:521(__init__)
-      703    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:52(__init__)
+      100    0.061    0.001    0.061    0.001 {built-in method builtins.print}
+      200    0.001    0.000    0.043    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:97(create_problem)
+      200    0.003    0.000    0.032    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:30(create_ast_tree)
+ 1100/200    0.008    0.000    0.029    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:46(recursive_create_ast)
+      100    0.010    0.000    0.021    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:68(create_ast_tree_iterative)
+      458    0.001    0.000    0.017    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:5(update_list)
+ 2654/458    0.011    0.000    0.015    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:6(recursive_make_list)
+      200    0.000    0.000    0.009    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:27(__init__)
+     1100    0.006    0.000    0.006    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:20(is_number)
+      850    0.003    0.000    0.005    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:143(__init__)
+    11514    0.004    0.000    0.004    0.000 {built-in method builtins.isinstance}
+      740    0.003    0.000    0.004    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:176(__init__)
+      450    0.003    0.000    0.003    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:31(find_all_operands)
+     5404    0.003    0.000    0.003    0.000 {method 'append' of 'list' objects}
+     1000    0.002    0.000    0.003    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:27(is_letter)
+      390    0.001    0.000    0.003    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:521(__init__)
+      250    0.001    0.000    0.003    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:484(__init__)
+     1003    0.002    0.000    0.003    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:52(__init__)
+  594/574    0.001    0.000    0.002    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:34(__eq__)
+      200    0.002    0.000    0.002    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:45(__str__)
+4361/4161    0.002    0.000    0.002    0.000 {built-in method builtins.len}
+       30    0.000    0.000    0.002    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:439(_equals)
+       21    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:74(work)
+      245    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:70(operators)
+      350    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:69(fast_is_number)
+    90/15    0.001    0.000    0.001    0.000 C:\Users\Dizer\AppData\Local\Programs\Python\Python313\Lib\copy.py:119(deepcopy)
+      246    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:66(values)
+     2150    0.001    0.000    0.001    0.000 {method 'isalpha' of 'str' objects}
       200    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:62(nodes)
-     2619    0.001    0.000    0.001    0.000 {method 'append' of 'list' objects}
-       21    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:78(commutative)
-      142    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:305(associative)
-       60    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:89(factor_in)
-      200    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:484(__init__)
-       48    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:281(work)
-    90/15    0.000    0.000    0.001    0.000 C:\Users\Dizer\AppData\Local\Programs\Python\Python313\Lib\copy.py:119(deepcopy)
-2206/2006    0.001    0.000    0.001    0.000 {built-in method builtins.len}
-     2673    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:199(one)
-       20    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:215(_equals)
-     2680    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:207(two)
-       20    0.000    0.000    0.001    0.000 {built-in method builtins.all}
        15    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:225(__deepcopy__)
-     1850    0.001    0.000    0.001    0.000 {method 'isdigit' of 'str' objects}
-       50    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:217(<genexpr>)
-  260/210    0.000    0.000    0.001    0.000 {built-in method builtins.hash}
-  372/116    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:316(collect)
-     1450    0.001    0.000    0.001    0.000 {method 'replace' of 'str' objects}
-       51    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:427(commutative)
+       54    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:89(factor_in)
+       19    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:78(commutative)
+      133    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:305(associative)
+       90    0.001    0.000    0.001    0.000 {built-in method builtins.sorted}
+       96    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:311(to_list)
+  200/160    0.000    0.000    0.001    0.000 {built-in method builtins.hash}
+     1743    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:22(__init__)
+      350    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:64(__ne__)
+     2456    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:199(one)
+       41    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:281(work)
        15    0.000    0.000    0.001    0.000 C:\Users\Dizer\AppData\Local\Programs\Python\Python313\Lib\copy.py:192(_deepcopy_list)
-      110    0.000    0.000    0.001    0.000 {built-in method builtins.sorted}
+     2470    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:207(two)
+   312/96    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:316(collect)
+      153    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:72(__init__)
+     1075    0.001    0.000    0.001    0.000 {method 'pop' of 'list' objects}
        30    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:432(__hash__)
+       49    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:427(commutative)
+      300    0.001    0.000    0.001    0.000 {method 'replace' of 'str' objects}
       120    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:75(__str__)
-     1268    0.001    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:22(__init__)
-    30/25    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:269(solve)
-       48    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:282(do_work)
-      142    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:287(left_associative)
-      103    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:72(__init__)
-      125    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:296(right_associative)
+      300    0.000    0.000    0.001    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:73(fast_is_letter)
+       75    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:502(__init__)
+      133    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:287(left_associative)
        18    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:445(factor_in)
-      550    0.000    0.000    0.000    0.000 {method 'find' of 'str' objects}
+       41    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:282(do_work)
+      450    0.000    0.000    0.000    0.000 {method 'find' of 'str' objects}
        30    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:66(__deepcopy__)
-       50    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:502(__init__)
-       51    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:428(do_commutative)
-      550    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:19(is_operation)
+      116    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:296(right_associative)
+       20    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:269(solve)
+      450    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\parse.py:17(is_operation)
+       49    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:428(do_commutative)
       120    0.000    0.000    0.000    0.000 {built-in method builtins.round}
-      160    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:62(__hash__)
         6    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:459(find_direction)
-      200    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:59(__len__)
-      464    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:32(root)
-      600    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:148(__str__)
-       25    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:489(result)
        60    0.000    0.000    0.000    0.000 C:\Users\Dizer\AppData\Local\Programs\Python\Python313\Lib\copy.py:232(_keep_alive)
-       16    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:525(result)
-       20    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:219(__hash__)
-       10    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:83(factor_out)
-        7    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:265(work)
-       90    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:434(<genexpr>)
-        7    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:596(result)
+      120    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:62(__hash__)
+      200    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:59(__len__)
+      458    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:32(root)
+      560    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:148(__str__)
+       10    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:215(_equals)
        45    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:28(__deepcopy__)
+       18    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:489(result)
+       90    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:434(<genexpr>)
+       16    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:525(result)
       165    0.000    0.000    0.000    0.000 {method 'get' of 'dict' objects}
+        8    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\problem.py:83(factor_out)
+       10    0.000    0.000    0.000    0.000 {built-in method builtins.all}
+      180    0.000    0.000    0.000    0.000 {built-in method builtins.id}
       120    0.000    0.000    0.000    0.000 {method 'is_integer' of 'float' objects}
       280    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:523(__str__)
+       10    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:219(__hash__)
+       30    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:217(<genexpr>)
         3    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:378(factor_out)
-      180    0.000    0.000    0.000    0.000 {built-in method builtins.id}
-      200    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:486(__str__)
-        7    0.000    0.000    0.000    0.000 {built-in method math.sin}
-       50    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:220(<genexpr>)
-      115    0.000    0.000    0.000    0.000 {built-in method builtins.issubclass}
-       66    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:202(one)
-        3    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:83(__add__)
         1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
-        7    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:506(result)
-       66    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:210(two)
-        9    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:359(factor_in)
-       45    0.000    0.000    0.000    0.000 {built-in method __new__ of type object at 0x00007FFD57BF68A0}
+        3    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:83(__add__)
+      100    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:653(has_location)
+      160    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:486(__str__)
+      107    0.000    0.000    0.000    0.000 {built-in method builtins.issubclass}
        45    0.000    0.000    0.000    0.000 {built-in method builtins.getattr}
+       64    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:202(one)
+       45    0.000    0.000    0.000    0.000 {built-in method __new__ of type object at 0x00007FFD434D68A0}
+       64    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:210(two)
+        7    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:506(result)
+       30    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:220(<genexpr>)
+        9    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:359(factor_in)
         3    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:40(replace)
         6    0.000    0.000    0.000    0.000 {method 'index' of 'list' objects}
-       40    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:594(__str__)
         6    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:468(get_max_mult)
-       40    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:504(__str__)
-       10    0.000    0.000    0.000    0.000 {built-in method builtins.hasattr}
        30    0.000    0.000    0.000    0.000 C:\Users\Dizer\AppData\Local\Programs\Python\Python313\Lib\copy.py:173(_deepcopy_atomic)
-       15    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:422(is_dist_over)
+       40    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:504(__str__)
        20    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:60(_equals)
-        3    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:415(get_max_sum)
-        5    0.000    0.000    0.000    0.000 c:\Users\Dizer\Desktop\Reshator\Reshator-2.0\arcade_test\ast.py:95(__mul__)
+        8    0.000    0.000    0.000    0.000 {built-in method builtins.hasattr}
 
 

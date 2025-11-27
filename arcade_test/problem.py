@@ -30,13 +30,13 @@ class Problem():
         self.update_list()
 
     @property
-    def root(self):
-        return self.operands[0]
+    def root(self): return self.operands[0]
     
     @root.setter
     def root(self, new):
         self.operands[0] = new
         new.parent = self
+        self.update_list()
 
     def replace_root(self, new_node): self.operands[0] = new_node
 
@@ -98,8 +98,5 @@ def create_problem(string) -> Problem:
     root = parse.create_ast_tree(string)
     return Problem(root)
 
-
 A = create_problem('*(*(+(+(1, 2), +(3, 4)), a), b)')
-print(A)
-A.factor_in(A.values[4])
 print(A)
