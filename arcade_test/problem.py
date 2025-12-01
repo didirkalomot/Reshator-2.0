@@ -2,7 +2,8 @@ import parse
 import ast
 
 class Problem():
-    def update_list(self) -> list:
+    """
+    def update_list(self):
         def recursive_make_list(node: ast.Node, parent=None, is_left=True) -> list:
             if isinstance(node, ast.Value): 
                 return [node]            
@@ -23,6 +24,12 @@ class Problem():
                 return ['('] + [o for operand in node.operands for o in recursive_make_list(operand, node)] + [')', node]
             return []
         self.problem_list = recursive_make_list(self.root)
+        """
+    def update_list(self):
+        def recursive_make_list(node: ast.Node, parent=None):
+            if isinstance(node, ast.Value): return [node]
+            if isinstance(node, ast.operator):
+                if node.fixity is ast.Fixity.PREFIX: pass
 
     def __init__(self, root = ast.Number(0)):
         self.operands = [root]
@@ -98,5 +105,11 @@ def create_problem(string) -> Problem:
     root = parse.create_ast_tree(string)
     return Problem(root)
 
-A = create_problem('*(*(+(+(1, 2), +(3, 4)), a), b)')
+####################################################################################
+
+A = create_problem('/(*(a, 3), 4)')
+
 print(A)
+
+
+
