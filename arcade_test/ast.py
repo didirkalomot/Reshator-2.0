@@ -13,6 +13,7 @@ class Node:
 
     def __init_subclass__(cls):
         super().__init_subclass__()
+        cls.actions = set()
         for attr_name in dir(cls):
             func = getattr(cls, attr_name) 
             if callable(func) and hasattr(func, 'action_name'): 
@@ -613,8 +614,7 @@ class Sin(Operator):
     associativity = Associativity.NONE 
     commutativity = False                                   
 
-    def __int__(self, x):
-        super().__init__(x)
+    def __int__(self, x): super().__init__(x)
 
     def __str__(self): return 'sin'
 
@@ -629,8 +629,7 @@ class Cos(Operator):
     associativity = Associativity.NONE 
     commutativity = False                                    
 
-    def __init__(self, x):
-        super().__int__(x)
+    def __init__(self, x): super().__int__(x)
 
     def __str__(self): return 'cos'
 
@@ -663,8 +662,7 @@ class Lg(Operator):
     associativity = Associativity.NONE 
     commutativity = False 
 
-    def __init__(self, x: Node):
-        super().__init__(x)
+    def __init__(self, x: Node): super().__init__(x)
 
     def __str__(self): return 'lg'
 
@@ -679,8 +677,7 @@ class Ln(Operator):
     associativity = Associativity.NONE 
     commutativity = False 
 
-    def __init__(self, x: Node):
-        super().__init__(x)
+    def __init__(self, x: Node): super().__init__(x)
 
     def __str__(self): return 'ln'
 

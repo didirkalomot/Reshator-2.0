@@ -2,35 +2,31 @@ import parse
 import ast
 
 class Problem():
-    """
     def update_list(self):
-        def recursive_make_list(node: ast.Node, parent=None, is_left=True) -> list:
-            if isinstance(node, ast.Value): 
-                return [node]            
+        def needs_parentheses(parent, child, is_left) -> bool:
+            if not isinstance(child, ast.Operator): return False
+            if child.priority > parent.priority: return True
+            if child.__class__ != parent.__class__:
+                if isinstance(parent, ast.Plus) and isinstance(child, ast.BinaryMinus) \
+                or isinstance(parent, ast.BinaryMinus) and isinstance(child, ast.Plus): return False 
+                return True
+            if parent.associativity is ast.Associativity.LEFT and not is_left: return True  
+            if parent.associativity is ast.Associativity.RIGHT and is_left: return True     
+            return False
+        def recursive_make_list(node: ast.Node, parent=None, is_left: bool=None) -> list:
+            if isinstance(node, ast.Value): return [node]
             if isinstance(node, ast.Operator):
                 if node.fixity is ast.Fixity.PREFIX:
-                    return [node, '('] + [o for operand in node.operands for o in recursive_make_list(operand, node)] + [')']                
+                    return [node, '('] + [o for operand in node.operands for o in recursive_make_list(operand, node)] + [')']
                 if node.fixity is ast.Fixity.INFIX:
-                    left, right = recursive_make_list(node.one, node, True), recursive_make_list(node.two, node, False)                    
-                    for child, is_left_child, lst in [(node.one, True, left), (node.two, False, right)]:
-                        if isinstance(child, ast.Operator) and (
-                            child.priority > node.priority or 
-                            (child.priority == node.priority and 
-                            ((node.associativity == ast.Associativity.LEFT and not is_left_child) or
-                            (node.associativity == ast.Associativity.RIGHT and is_left_child)))
-                        ):
-                            lst[:] = ['('] + lst + [')']                    
-                    return left + [node] + right                
+                    left, right = recursive_make_list(node.one, node, True), recursive_make_list(node.two, node, False)
+                    for child, is_left, lst in [(node.one, True, left), (node.two, False, right)]:
+                        if needs_parentheses(node, child, is_left): lst[:] = ['('] + lst + [')']
+                    return left + [node] + right
                 return ['('] + [o for operand in node.operands for o in recursive_make_list(operand, node)] + [')', node]
             return []
         self.problem_list = recursive_make_list(self.root)
-        """
-    def update_list(self):
-        def recursive_make_list(node: ast.Node, parent=None):
-            if isinstance(node, ast.Value): return [node]
-            if isinstance(node, ast.operator):
-                if node.fixity is ast.Fixity.PREFIX: pass
-
+                            
     def __init__(self, root = ast.Number(0)):
         self.operands = [root]
         root.parent = self
@@ -107,9 +103,10 @@ def create_problem(string) -> Problem:
 
 ####################################################################################
 
-A = create_problem('/(*(a, 3), 4)')
+A = create_problem('-(a, -(+(b, c), 4))')
 
 print(A)
-
+print(type(A.nodes[0]))
+for f in A.nodes[0].actions: print(f.action_name)
 
 
