@@ -105,6 +105,6 @@ def profile_all_functions():
         ps.sort_stats('cumulative')
         ps.print_stats(100)
     
-    print("✅ Профилирование завершено! Смотри profile_results.txt")
+    print("Профилирование завершено! Смотри profile_results.txt")
 
 profile_all_functions()

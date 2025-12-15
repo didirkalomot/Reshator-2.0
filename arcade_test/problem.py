@@ -73,40 +73,48 @@ class Problem():
     @property
     def operators(self) -> list[ast.Operator]:
         return [operator for operator in self.problem_list if isinstance(operator, ast.Operator)]  
+    
+    def use_action(self, node: ast.Node, action_name):
+        if node in self.problem_list: 
+            node.actions[action_name]()
+            self.update_list()
 
     def work(self, operator: ast.Operator):
-        operator.work()
-        self.update_list()
+        if operator in self.problem_list:
+            operator.work()
+            self.update_list()
 
     def commutative(self, operator: ast.Operator):
-        if isinstance(operator, ast.Commutative):
+        if operator in self.problem_list and isinstance(operator, ast.Commutative):
             operator.commutative()
             self.update_list()
 
     def factor_out(self, *args: ast.Node):
-        distributive_class = args[0].parent.__class__
-        if issubclass(distributive_class, ast.Distributive):
-            distributive_class.factor_out(*args)
-            self.update_list()
+        if args[0] in self.problem_list:
+            distributive_class = args[0].parent.__class__
+            if issubclass(distributive_class, ast.Distributive):
+                distributive_class.factor_out(*args)
+                self.update_list()
 
     def factor_in(self, node: ast.Node, direction_right: bool = None):
-        distributive_class = node.parent.__class__
-        if issubclass(distributive_class, ast.Distributive):
-            distributive_class.factor_in(node, direction_right)
-            self.update_list()
+        if node in self.problem_list:
+            distributive_class = node.parent.__class__
+            if issubclass(distributive_class, ast.Distributive):
+                distributive_class.factor_in(node, direction_right)
+                self.update_list()
 
 ####################################################################################
 
-def create_problem(string) -> Problem: 
+def create_problem(string) -> Problem:
     root = parse.create_ast_tree(string)
     return Problem(root)
 
 ####################################################################################
 
-A = create_problem('-(a, -(+(b, c), 4))')
+#A = create_problem('*(a, +(b, -(c, d)))')
 
-print(A)
-print(type(A.nodes[0]))
-for f in A.nodes[0].actions: print(f.action_name)
+Root = parse.create_ast_tree('*(a, +(b, -(c, d)))')
 
+for node in Root.two:
+    print(node)
 
