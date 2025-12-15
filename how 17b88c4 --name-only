@@ -1,0 +1,50 @@
+[33m17b88c4[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mindependent-nodes[m[33m, [m[1;31morigin/independent-nodes[m[33m)[m HEAD@{0}: checkout: moving from feature-branch to independent-nodes
+[33m7e46ad0[m[33m ([m[1;31morigin/nodes-as-iter-objects[m[33m, [m[1;32mfeature-branch[m[33m)[m HEAD@{1}: checkout: moving from independent-nodes to feature-branch
+[33m17b88c4[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mindependent-nodes[m[33m, [m[1;31morigin/independent-nodes[m[33m)[m HEAD@{2}: commit: del Problem
+[33m1e3c4a5[m HEAD@{3}: commit: nodes it is iter objects =)
+[33m7e46ad0[m[33m ([m[1;31morigin/nodes-as-iter-objects[m[33m, [m[1;32mfeature-branch[m[33m)[m HEAD@{4}: commit: upgrade update_list
+[33mb4b0171[m HEAD@{5}: commit: features
+[33mb48dd86[m HEAD@{6}: commit: iterative parse
+[33m1ea5401[m HEAD@{7}: commit: hash, equalse, profile
+[33mcd2c910[m HEAD@{8}: commit: factor_in 2.0 !!!
+[33m934e98c[m HEAD@{9}: commit: factor_in 2
+[33m88c5896[m HEAD@{10}: commit: slots
+[33m19c7d83[m HEAD@{11}: commit: just factor_in
+[33me38f8a2[m HEAD@{12}: commit: factor_out works!!
+[33m1f949a1[m HEAD@{13}: commit: скобки, ассоциативность
+[33mf27710e[m HEAD@{14}: commit: 1
+[33mdaf97f8[m HEAD@{15}: commit: associativity - work
+[33m3febb99[m HEAD@{16}: commit: all is good 21.10.2025
+[33m4cad463[m HEAD@{17}: commit: исп. ошибка плохого наследования
+[33mc23d36b[m HEAD@{18}: commit: fix bug create_tree
+[33m4642603[m HEAD@{19}: commit: create_tree work
+[33me71da33[m HEAD@{20}: commit: create_tree - work
+[33m7fe34f1[m HEAD@{21}: commit: 2
+[33mb730d36[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{22}: checkout: moving from 53c52243a43f3118a90404f29f892d4d614d7fb8 to independent-nodes
+[33m53c5224[m[33m ([m[1;31morigin/Самостоятельные-узлы-дерева[m[33m, [m[1;32mСамостоятельные-узлы-дерева[m[33m)[m HEAD@{23}: checkout: moving from Самостоятельные-узлы-дерева to 53c52243a43f3118a90404f29f892d4d614d7fb8
+[33m53c5224[m[33m ([m[1;31morigin/Самостоятельные-узлы-дерева[m[33m, [m[1;32mСамостоятельные-узлы-дерева[m[33m)[m HEAD@{24}: checkout: moving from Самостоятельные-узлы-дерева to Самостоятельные-узлы-дерева
+[33m53c5224[m[33m ([m[1;31morigin/Самостоятельные-узлы-дерева[m[33m, [m[1;32mСамостоятельные-узлы-дерева[m[33m)[m HEAD@{25}: checkout: moving from independent-nodes to Самостоятельные-узлы-дерева
+[33mb730d36[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{26}: checkout: moving from main to independent-nodes
+[33mb730d36[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{27}: checkout: moving from Самостоятельные-узлы-дерева to main
+[33m53c5224[m[33m ([m[1;31morigin/Самостоятельные-узлы-дерева[m[33m, [m[1;32mСамостоятельные-узлы-дерева[m[33m)[m HEAD@{28}: checkout: moving from Самостоятельные-узлы-дерева to Самостоятельные-узлы-дерева
+[33m53c5224[m[33m ([m[1;31morigin/Самостоятельные-узлы-дерева[m[33m, [m[1;32mСамостоятельные-узлы-дерева[m[33m)[m HEAD@{29}: checkout: moving from independent-nodes to Самостоятельные-узлы-дерева
+[33mb730d36[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{30}: checkout: moving from main to independent-nodes
+[33mb730d36[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{31}: checkout: moving from main to main
+[33mb730d36[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{32}: checkout: moving from main to main
+[33mb730d36[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{33}: commit: value_represent 0.1
+[33m53c5224[m[33m ([m[1;31morigin/Самостоятельные-узлы-дерева[m[33m, [m[1;32mСамостоятельные-узлы-дерева[m[33m)[m HEAD@{34}: checkout: moving from Самостоятельные-узлы-дерева to main
+[33m53c5224[m[33m ([m[1;31morigin/Самостоятельные-узлы-дерева[m[33m, [m[1;32mСамостоятельные-узлы-дерева[m[33m)[m HEAD@{35}: checkout: moving from main to Самостоятельные-узлы-дерева
+[33m53c5224[m[33m ([m[1;31morigin/Самостоятельные-узлы-дерева[m[33m, [m[1;32mСамостоятельные-узлы-дерева[m[33m)[m HEAD@{36}: commit: Не правильные размеры спрайтов
+[33m34ef2ad[m HEAD@{37}: commit: Не правильное отображение
+[33mcbc902c[m HEAD@{38}: commit: ProblemList
+[33ma2665ff[m HEAD@{39}: pull --tags origin main: Merge made by the 'ort' strategy.
+[33m317ffa5[m HEAD@{40}: commit: size font
+[33m513b8fe[m HEAD@{41}: commit: 2
+[33m2801a84[m HEAD@{42}: pull --tags origin main: Merge made by the 'ort' strategy.
+[33m6d71e8f[m HEAD@{43}: commit: new font
+[33mc3e3e6d[m HEAD@{44}: pull --tags origin main: Merge made by the 'ort' strategy.
+[33m69559b3[m HEAD@{45}: commit: test_git_error
+[33m4a816a8[m HEAD@{46}: commit: make_priblem 0.2
+[33mb7889ea[m HEAD@{47}: commit: unary minus have max priority
+[33m42d120e[m HEAD@{48}: commit: make_problem 1.0 it's work
+[33md190005[m HEAD@{49}: clone: from https://github.com/didirkalomot/Reshator-2.0.git

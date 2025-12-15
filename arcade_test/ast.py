@@ -1,3 +1,5 @@
+from functools import cached_property
+from types import MappingProxyType
 from copy import deepcopy
 import enum
 import math
@@ -9,21 +11,23 @@ def action(name):
     return decorator
 
 class Node:
-    actions = set()
+    ACTIONS = {}
+
+    @property
+    def actions(self) -> dict: return MappingProxyType(self.__class__.ACTIONS)
 
     def __init_subclass__(cls):
         super().__init_subclass__()
-        cls.actions = set()
+        cls.actions = {}
         for attr_name in dir(cls):
             func = getattr(cls, attr_name) 
-            if callable(func) and hasattr(func, 'action_name'): 
-                cls.actions.add(func)
-            
+            if hasattr(func, 'action_name'):
+                cls.actions[func.action_name] = func
+                del func.action_name
+
     __slots__ = ['parent']
 
     def __init__(self): self.parent = None
-
-    def __str__(self): return 'node'
 
     def print_tree(self): print(f'[{self}]')
 
@@ -44,6 +48,9 @@ class Node:
                     self.parent.operands[i] = new
                     new.parent = self.parent
 
+    def clouse(self): self.replace(Brackets(self))
+    ACTIONS['закрыть в скобки'] = clouse
+
 #####################################################################################
 
 class Value(Node):
@@ -53,9 +60,7 @@ class Value(Node):
         self.value = value
         super().__init__()
 
-    def __str__(self): return 'value'
-    
-    def __len__(self): return 1
+    def __iter__(self): return iter([self.value])
 
     def _equals(self, other) -> bool: return self.value == other.value
     
@@ -75,8 +80,7 @@ class Value(Node):
     def as_fraction(self): self.replace(Div(self, Number(1)))
 
 class Number(Value):
-    def __init__(self, value: float):
-        super().__init__(value)
+    def __init__(self, value: float): super().__init__(value)
             
     def __str__(self):
         value = round(self.value, 4)
@@ -145,8 +149,8 @@ class Number(Value):
             return self.value <= other
         return NotImplemented
 
-Number.zero = Number(0)
-Number.one = Number(1)
+Number.ZERO = Number(0)
+Number.ONE = Number(1)
 
 class Letter(Value):
     def __init__(self, value: str):
@@ -167,13 +171,19 @@ class Letter(Value):
         return NotImplemented
     
     def __mul__(self, other):
-        if other == Number.zero: return Number(0)
+        if other == Number.ZERO: return Number(0)
         if self == other: return Pow(deepcopy(self), 2)
         return NotImplemented
     
     def __truediv__(self, other):
         if self == other: return Number(1)
         return NotImplemented
+
+class Brackets(Value):
+    def __init__(self, value: Node): super().__init__(value)
+
+    @action('открыть скобки')
+    def open(self): self.replace(self.value)
 
 #####################################################################################
 
@@ -183,7 +193,6 @@ class Fixity(enum.Enum):
     POSTFIX = 1
 
 class Associativity(enum.Enum):
-    NONE = 0
     LEFT = -1      
     RIGHT = 1
     BOTH = 2 
@@ -191,11 +200,8 @@ class Associativity(enum.Enum):
 #######################################
 
 class Operator(Node):
-    fixity = Fixity.INFIX
-    arity = 2
-    priority = 1
-    associativity = Associativity.NONE
-    commutativity = False
+    ARITY = 2
+    PRIORITY = 1
 
     __slots__ = ['operands']
 
@@ -205,22 +211,29 @@ class Operator(Node):
             node.parent = self
         super().__init__()
 
-    @property
-    def fixity(self) -> Fixity: return self.__class__.priority
+    @cached_property
+    def fixity(self) -> Fixity:  
+        if isinstance(self, Prefix): return Fixity.PREFIX
+        if isinstance(self, Infix): return Fixity.INFIX
+        else: return Fixity.POSTFIX
 
     @property
     def arity(self) -> int:
-        if self.__class__.arity is None: return len(self.operands)
-        else: return self.__class__.arity
+        if self.__class__.Arity is None: return len(self.operands)
+        else: return self.__class__.Arity
 
-    @property
-    def priority(self) -> int: return self.__class__.priority
+    @cached_property
+    def priority(self) -> int: return self.__class__.PRIORITY
 
-    @property
-    def associativity(self) -> Associativity: return self.__class__.associativity
+    @cached_property
+    def associativity(self) -> Associativity | None: 
+        if isinstance(self, AssociativeBoth): return Associativity.BOTH
+        if isinstance(self, AssociativeLeft): return Associativity.LEFT
+        if isinstance(self, AssociativeRight): return Associativity.RIGHT
+        else: return None
 
-    @property
-    def commutativity(self) -> bool: self.__class__.commutativity
+    @cached_property
+    def commutativity(self) -> bool: return isinstance(self, Commutative)
      
     @property
     def one(self) -> Node: return self.operands[0]
@@ -255,6 +268,10 @@ class Operator(Node):
             op.parent = result
         return result
     
+    def __len__(self): return sum(1 for _ in iter(self))
+    
+    def __getitem__(self, key) -> Node: return list(iter(self))[key]    
+
     def __str__(self): return 'operator'
 
     def print_tree(self):
@@ -271,8 +288,6 @@ class Operator(Node):
             for i, oper in enumerate(self.operands):
                 is_last_operand = (i == len(self.operands) - 1)
                 resursive_print_tree(oper, is_last_operand, "")
-    
-    def __len__(self): return 1 
 
     def is_child(self, node: Node): 
         return any(operand is node for operand in self.operands)
@@ -286,7 +301,7 @@ class Operator(Node):
 
     @action('выполнить')
     def work(self):
-        if (result := self.result()) != NotImplemented:
+        if (result := self.result()) is not NotImplemented:
              self.replace(result)
 
     def solve(self):
@@ -299,48 +314,59 @@ class Operator(Node):
         return result if result != NotImplemented else self
 
 #######################################
+class Prefix:
+    def __iter__(self):
+        yield self
+        yield '('
+        for op in self.operands:
+            yield from op
+        yield ')'
 
+class Infix:
+    ARITY = 2
+
+    def needs_parentheses(self, child: Node, is_left: bool) -> bool:
+        if not isinstance(child, Operator): return False
+        if child.priority > self.priority: return True
+        if child.__class__ != self.__class__:
+            if isinstance(self, Plus) and isinstance(child, BinaryMinus) \
+            or isinstance(self, BinaryMinus) and isinstance(child, Plus): return False 
+            return True
+        if self.associativity is Associativity.LEFT and not is_left: return True  
+        if self.associativity is Associativity.RIGHT and is_left: return True     
+        return False
+
+    def __iter__(self):
+        left, right = self.operands
+        if self.needs_parentheses(left, True):
+            yield '('; yield from left; yield ')'
+        else: yield from left
+        yield self
+        if self.needs_parentheses(right, False):
+            yield '('; yield from right; yield ')'
+        else: yield from right
+
+class Postfix:
+    def __iter__(self):
+        yield '('
+        for op in self.operands:
+            yield from op
+        yield ')'
+        yield self
+        
 class Associative:
     @action('выполнить')
     def work(self):
         def do_work(operator):
-            if (result := operator.result()) not in (None, NotImplemented):
+            if (result := operator.result()) is not NotImplemented:
                 operator.replace(result)
         do_work(self.associative())
-
-    def left_associative(self) -> Operator:
-        """a ∘ (b ∘ c) → (a ∘ b) ∘ c - возвращает self.one"""
-        current = self
-        while isinstance(current.two, self.__class__):
-            current.one = self.__class__(current.one, current.two.one)
-            current.two = current.two.two
-            current = current.one
-        return current
                 
-    def right_associative(self) -> Operator:
-        """(a ∘ b) ∘ c → a ∘ (b ∘ c) - возвращает self.two"""
-        current = self
-        while isinstance(current.one, self.__class__):
-            current.two = self.__class__(current.one.two, current.two)
-            current.one = current.one.one
-            current = current.two
-        return current  
-
-    def associative(self) -> Operator:
-        result = self
-        result = result.left_associative() \
-        if result.associativity in (Associativity.BOTH, Associativity.LEFT) else result
-        result = result.right_associative() \
-        if result.associativity in (Associativity.BOTH, Associativity.RIGHT) else result
-        return result
-    
     @staticmethod
     def to_list(node) -> list[Node]:
-        if node.associativity == Associativity.NONE:
-            return node.operands
         operands = []
         def collect(n):
-            if isinstance(n, node.__class__) and n.associativity != Associativity.NONE:
+            if isinstance(n, node.__class__) and isinstance(n, Associative):
                 for op in n.operands: collect(op)
             else: operands.append(n)
         collect(node)
@@ -350,22 +376,48 @@ class Associative:
     def from_list(cls, operands) -> Node | None:
         if not operands: return None
         if len(operands) == 1: return operands[0]
-        if cls.associativity == Associativity.RIGHT:
-            result = operands[-1]
-            for i in range(len(operands)-2, -1, -1):
-                result = cls(operands[i], result)
-            return result
-        else:
-            result = operands[0]
-            for op in operands[1:]: result = cls(result, op)
-            return result
+        result = operands[0]
+        for op in operands[1:]: result = cls(result, op)
+        return result
+        
+class AssociativeLeft(Associative):
+    def associative(self) -> Operator:
+        """a ∘ (b ∘ c) → (a ∘ b) ∘ c - возвращает self.one"""
+        current = self
+        while isinstance(current.two, self.__class__):
+            current.one = self.__class__(current.one, current.two.one)
+            current.two = current.two.two
+            current = current.one
+        return current
+
+class AssociativeRight(Associative):
+    def associative(self) -> Operator:
+        """(a ∘ b) ∘ c → a ∘ (b ∘ c) - возвращает self.two"""
+        current = self
+        while isinstance(current.one, self.__class__):
+            current.two = self.__class__(current.one.two, current.two)
+            current.one = current.one.one
+            current = current.two
+        return current 
+        
+    def from_list(cls, operands) -> Node | None:
+        if not operands: return None
+        if len(operands) == 1: return operands[0]
+        result = operands[-1]
+        for i in range(len(operands)-2, -1, -1):
+            result = cls(operands[i], result)
+        return result
+    
+class AssociativeBoth(AssociativeLeft, AssociativeRight):
+    def associative(self) -> Operator:
+        result = AssociativeLeft.associative(self) 
+        return AssociativeRight.associative(result)
 
 class Commutative:
     def __hash__(self):
         return hash((self.__class__,) + tuple(sorted(
             str(op.value) if isinstance(op, Value) else op.__class__.__name__
-            for op in self.operands
-        )))
+            for op in self.operands)))
     
     def _equals(self, other) -> bool:
         return sorted(self.operands, key=hash) == sorted(other.operands, key=hash)
@@ -444,7 +496,7 @@ class Distributive:
     def is_dist_over(cls, node_cls: type) -> bool:
         return node_cls in cls.distributive_over
         
-class AssociativeCommutative(Associative, Commutative):
+class AssociativeCommutative(AssociativeBoth, Commutative):
     @action('коммутативность')
     def commutative(self):
         def do_commutative(operator):
@@ -455,15 +507,14 @@ class AssociativeCommutative(Associative, Commutative):
         nodes_list = self.to_list(self)
         return hash((self.__class__,) + tuple(sorted(
             str(op.value) if isinstance(op, Value) else op.__class__.__name__
-            for op in nodes_list
-        )))
+            for op in nodes_list)))
     
     def _equals(self, other) -> bool:
         self_flat = self.to_list(self) 
         other_flat = self.to_list(other)    
         return sorted(self_flat, key=hash) == sorted(other_flat, key=hash)
 
-class AssociativeDistributive(Associative, Distributive):
+class AssociativeDistributive(AssociativeBoth, Distributive):
     @classmethod
     def factor_in(cls, node: Node, direction_right: bool = None):
         if direction_right is None:
@@ -496,37 +547,31 @@ class AssociativeDistributive(Associative, Distributive):
     
 #####################################################################################
 
-class Plus(AssociativeCommutative, Operator):
-    fixity = Fixity.INFIX 
-    arity = 2             
-    priority = 5
-    associativity = Associativity.BOTH
-    commutativity = True 
+class Plus(AssociativeCommutative, Infix, Operator ):
+    ARITY = 2             
+    PRIORITY = 5
 
     def __init__(self, addend1, addend2): super().__init__(addend1, addend2)
         
     def __str__(self): return '+'
 
     def result(self) -> Node:
-        if self.one == Number.zero: return self.two
-        if self.two == Number.zero: return self.one
+        if self.one == Number.ZERO: return self.two
+        if self.two == Number.ZERO: return self.one
         try: return self.one + self.two
         except TypeError: return NotImplemented
           
-class BinaryMinus(Associative, Operator):
-    fixity = Fixity.INFIX 
-    arity = 2            
-    priority = 5
-    associativity = Associativity.LEFT
-    commutativity = False 
+class BinaryMinus(Associative, Infix, Operator):
+    ARITY = 2            
+    PRIORITY = 5
 
     def __init__(self, minuend, subtrahend): super().__init__(minuend, subtrahend)
 
     def __str__(self): return '-'
 
     def result(self) -> Node:
-        if self.one == Number.zero: return UnaryMinus(self.two)
-        if self.two == Number.zero: return self.one
+        if self.one == Number.ZERO: return UnaryMinus(self.two)
+        if self.two == Number.ZERO: return self.one
         try: return self.one - self.two
         except TypeError: return NotImplemented
 
@@ -537,66 +582,54 @@ class BinaryMinus(Associative, Operator):
         else:
             self.replace(Plus(self.one, UnaryMinus(self.two)))
         
-class Mult(AssociativeCommutative, AssociativeDistributive, Operator):
+class Mult(AssociativeCommutative, AssociativeDistributive, Infix, Operator):
     distributive_over = (Plus, BinaryMinus)
-
-    fixity = Fixity.INFIX             
-    arity = 2                          
-    priority = 4
-    associativity = Associativity.BOTH
-    commutativity = True              
+         
+    ARITY = 2                          
+    PRIORITY = 4    
 
     def __init__(self, factor1, factor2): super().__init__(factor1, factor2)
 
     def __str__(self): return '*'
 
     def result(self) -> Node:
-        if self.one == Number.one: return self.two
-        if self.two == Number.one: return self.one        
+        if self.one == Number.ONE: return self.two
+        if self.two == Number.ONE: return self.one        
         if isinstance(self.one, Div) and isinstance(self.two,  Div): 
             return Div(Mult(self.one.one, self.two.one), Mult(self.one.two, self.two.two))
         try: return self.one * self.two
         except TypeError: return NotImplemented
 
-class Div(Associative, Operator):
-    fixity = Fixity.INFIX 
-    arity = 2             
-    priority = 4
-    associativity = Associativity.LEFT
-    commutativity = False 
+class Div(AssociativeLeft, Infix, Operator):
+    ARITY = 2             
+    PRIORITY = 4
 
     def __init__(self, dividend, divisor): super().__init__(dividend, divisor)
 
     def __str__(self): return '/'
 
     def result(self) -> Node:
-        if self.one == Number.zero: return Number(0)
-        if self.two == Number.one: return self.one
+        if self.one == Number.ZERO: return Number(0)
+        if self.two == Number.ONE: return self.one
         try: return self.one / self.two
         except TypeError: return NotImplemented
                    
-class Pow(Associative, Operator):
-    fixity = Fixity.INFIX 
-    arity = 2             
-    priority = 2
-    associativity = Associativity.RIGHT
-    commutativity = False
+class Pow(AssociativeRight, Infix, Operator):
+    ARITY = 2             
+    PRIORITY = 2
     
     def __init__(self, base, degree): super().__init__(base, degree)
 
     def __str__(self): return '^'
 
     def result(self) -> Node:
-        if self.two == Number.one: return self.one
+        if self.two == Number.ONE: return self.one
         try: return self.one ** self.two
         except TypeError: return NotImplemented
         
-class UnaryMinus(Operator):
-    fixity = Fixity.PREFIX
-    arity = 1
-    priority = 3
-    associativity = Associativity.NONE 
-    commutativity = False              
+class UnaryMinus(Prefix, Operator):
+    ARITY = 1
+    PRIORITY = 3       
 
     def __init__(self, operand): super().__init__(operand)
 
@@ -607,12 +640,10 @@ class UnaryMinus(Operator):
         try: return -self.one
         except TypeError: return NotImplemented
 
-class Sin(Operator):
-    fixity = Fixity.PREFIX
-    arity = 1
-    priority = 1   
-    associativity = Associativity.NONE 
-    commutativity = False                                   
+class Sin(Prefix, Operator):
+    FIXITY = Fixity.PREFIX
+    ARITY = 1
+    PRIORITY = 1                        
 
     def __int__(self, x): super().__init__(x)
 
@@ -622,12 +653,10 @@ class Sin(Operator):
         try: return Number(math.sin(self.one))
         except TypeError: return NotImplemented
         
-class Cos(Operator):
-    fixity = Fixity.PREFIX
-    arity = 1
-    priority = 1  
-    associativity = Associativity.NONE 
-    commutativity = False                                    
+class Cos(Prefix, Operator):
+    FIXITY = Fixity.PREFIX
+    ARITY = 1
+    PRIORITY = 1                         
 
     def __init__(self, x): super().__int__(x)
 
@@ -637,12 +666,10 @@ class Cos(Operator):
         try: return Number(math.cos(self.one))
         except TypeError: return NotImplemented
         
-class Log(Operator):
-    fixity = Fixity.PREFIX
-    arity = 2                          
-    priority = 1                       
-    associativity = Associativity.NONE 
-    commutativity = False              
+class Log(Prefix, Operator):
+    FIXITY = Fixity.PREFIX
+    ARITY = 2                          
+    PRIORITY = 1                         
 
     def __init__(self, base: Node, x: Node):
         if isinstance(base, Number):
@@ -655,12 +682,10 @@ class Log(Operator):
         try: return Number(math.log(self.two.value, self.one.value))
         except TypeError: return NotImplemented
         
-class Lg(Operator):
-    fixity = Fixity.PREFIX
-    arity = 1
-    priority = 1                       
-    associativity = Associativity.NONE 
-    commutativity = False 
+class Lg(Prefix, Operator):
+    FIXITY = Fixity.PREFIX
+    ARITY = 1
+    PRIORITY = 1                       
 
     def __init__(self, x: Node): super().__init__(x)
 
@@ -670,12 +695,10 @@ class Lg(Operator):
         try: return Number(math.log(self.one.value, 10))
         except TypeError: return NotImplemented
     
-class Ln(Operator):
-    fixity = Fixity.PREFIX
-    arity = 1
-    priority = 1                       
-    associativity = Associativity.NONE 
-    commutativity = False 
+class Ln(Prefix, Operator):
+    FIXITY = Fixity.PREFIX
+    ARITY = 1
+    PRIORITY = 1                       
 
     def __init__(self, x: Node): super().__init__(x)
 
