@@ -1,3 +1,4 @@
+from __future__ import annotations
 from functools import cached_property
 from types import MappingProxyType
 from copy import deepcopy
@@ -16,18 +17,38 @@ class Node:
     @property
     def actions(self) -> dict: return MappingProxyType(self.__class__.ACTIONS)
 
-    def __init_subclass__(cls):
-        super().__init_subclass__()
-        cls.actions = {}
-        for attr_name in dir(cls):
-            func = getattr(cls, attr_name) 
-            if hasattr(func, 'action_name'):
-                cls.actions[func.action_name] = func
-                del func.action_name
-
     __slots__ = ['parent']
 
     def __init__(self): self.parent = None
+
+    def __iter__(self): raise NotImplementedError()
+
+    def __getitem__(self, key) -> Node | str: return list(iter(self))[key]
+
+    @property
+    def nodes(self) -> list[Node]: return [node for node in self if type(node) is not str]
+
+    @property
+    def values(self) -> list[Value]: return [value for value in self if isinstance(value, Value)]
+
+    @property
+    def operators(self) -> list[Operator]: 
+        return [operator for operator in self if isinstance(operator, Operator)]
+
+    @cached_property
+    def symbol(self) -> str: return 'node'
+
+    def __str__(self):
+        result = []
+        node = self[0]
+        symbol = node if type(node) is str else node.symbol
+        result.append(symbol)
+        for node in self[1:]:
+            prev_symbol = symbol
+            symbol = node if type(node) is str else node.symbol
+            if not (symbol == ')' or prev_symbol == '('): result.append(' ')
+            result.append(symbol)
+        return ''.join(result)
 
     def print_tree(self): print(f'[{self}]')
 
@@ -37,9 +58,9 @@ class Node:
         result.parent = None
         return result
 
-    def __eq__(self, other): return type(self) == type(other) and self._equals()
-    
-    def _equals(self, other) -> bool: raise NotImplementedError()
+    def __eq__(self, other): return type(self) == type(other) and self._equals(other)
+
+    def _equals(self, other): raise NotImplementedError()
     
     def replace(self, new):
         if self.parent is not None:
@@ -48,8 +69,8 @@ class Node:
                     self.parent.operands[i] = new
                     new.parent = self.parent
 
+    @action('закрыть в скобки')
     def clouse(self): self.replace(Brackets(self))
-    ACTIONS['закрыть в скобки'] = clouse
 
 #####################################################################################
 
@@ -60,9 +81,12 @@ class Value(Node):
         self.value = value
         super().__init__()
 
-    def __iter__(self): return iter([self.value])
+    @cached_property
+    def symbol(self) -> str: return 'value'
 
-    def _equals(self, other) -> bool: return self.value == other.value
+    def __iter__(self): yield self
+
+    def _equals(self, other): return self.value == other.value
     
     def __hash__(self): return hash((self.__class__, self.value))
     
@@ -81,14 +105,12 @@ class Value(Node):
 
 class Number(Value):
     def __init__(self, value: float): super().__init__(value)
-            
-    def __str__(self):
-        value = round(self.value, 4)
-        if value.is_integer():
-            return str(int(value))
+
+    @cached_property      
+    def symbol(self) -> str:
+        value = round(self.value, 4) #под вопросом
+        if value.is_integer(): return str(int(value))
         else: return str(value)
-    
-    def __len__(self): return len(str(self.value))
 
     def __add__(self, other):
         if isinstance(other, Number):
@@ -153,14 +175,14 @@ Number.ZERO = Number(0)
 Number.ONE = Number(1)
 
 class Letter(Value):
+
     def __init__(self, value: str):
         if value and value[0].isalpha():
             super().__init__(value)
         else: raise TypeError
 
-    def __str__(self): return self.value
-
-    def __len__(self): return len(self.value)
+    @cached_property
+    def symbol(self) -> str: return self.value
 
     def __add__(self, other):
         if self == other: return Mult(2, deepcopy(self))
@@ -181,6 +203,9 @@ class Letter(Value):
 
 class Brackets(Value):
     def __init__(self, value: Node): super().__init__(value)
+
+    @cached_property
+    def symbol(self) -> str: f'({str(self.value)})'
 
     @action('открыть скобки')
     def open(self): self.replace(self.value)
@@ -251,15 +276,14 @@ class Operator(Node):
         self.operands[1] = value
         value.parent = self    
         
-    def _equals(self, other) -> bool:
+    def _equals(self, other):
         if len(self.operands) != len(other.operands): return False
         return all(a == b for a, b in zip(self.operands, other.operands))
 
     def __hash__(self):
         return hash((self.__class__,) + tuple(
             op.value if isinstance(op, Value) else op.__class__ 
-            for op in self.operands
-        ))
+            for op in self.operands))
     
     def __deepcopy__(self, memo=None):
         result = super().__deepcopy__(memo)
@@ -268,43 +292,38 @@ class Operator(Node):
             op.parent = result
         return result
     
-    def __len__(self): return sum(1 for _ in iter(self))
-    
-    def __getitem__(self, key) -> Node: return list(iter(self))[key]    
-
-    def __str__(self): return 'operator'
+    def __len__(self): return sum(1 for _ in iter(self))    
 
     def print_tree(self):
-        def resursive_print_tree(node, is_last=True, prefix=""):
+        def resursive_print_tree(node: Node, is_last=True, prefix=""):
             branch = "└── " if is_last else "├── "
-            print(f"{prefix}{branch}[{node}]")
+            print(f"{prefix}{branch}[{node.symbol}]")
             if isinstance(node, Value): return
             new_prefix = prefix + ("    " if is_last else "│   ")
             for i, oper in enumerate(node.operands):
                 is_last_operand = (i == len(node.operands) - 1)
                 resursive_print_tree(oper, is_last_operand, new_prefix)
-        print(f"[{self}]")
+        print(f"[{self.symbol}]")
         if not isinstance(self, Value):
             for i, oper in enumerate(self.operands):
                 is_last_operand = (i == len(self.operands) - 1)
                 resursive_print_tree(oper, is_last_operand, "")
 
-    def is_child(self, node: Node): 
-        return any(operand is node for operand in self.operands)
+    def is_child(self, node: Node) -> bool: return any(operand is node for operand in self.operands)
     
     def is_descendant(self, node: Node):
         return (self is node or 
             any(isinstance(n, Operator) and n.is_descendant(node) 
                 for n in self.operands))
 
-    def result(self) -> Value: return NotImplemented
+    def result(self) -> Value: raise NotImplementedError()
 
     @action('выполнить')
     def work(self):
         if (result := self.result()) is not NotImplemented:
              self.replace(result)
 
-    def solve(self):
+    def solve(self) -> Node:
         for i, operand in enumerate(self.operands):
             if isinstance(operand, Operator):
                 new_operand = operand.solve()
@@ -314,12 +333,12 @@ class Operator(Node):
         return result if result != NotImplemented else self
 
 #######################################
+
 class Prefix:
     def __iter__(self):
         yield self
         yield '('
-        for op in self.operands:
-            yield from op
+        for op in self.operands: yield from op
         yield ')'
 
 class Infix:
@@ -349,8 +368,7 @@ class Infix:
 class Postfix:
     def __iter__(self):
         yield '('
-        for op in self.operands:
-            yield from op
+        for op in self.operands: yield from op
         yield ')'
         yield self
         
@@ -362,14 +380,13 @@ class Associative:
                 operator.replace(result)
         do_work(self.associative())
                 
-    @staticmethod
-    def to_list(node) -> list[Node]:
+    def to_list(self) -> list[Node]:
         operands = []
         def collect(n):
-            if isinstance(n, node.__class__) and isinstance(n, Associative):
+            if isinstance(n, self.__class__):
                 for op in n.operands: collect(op)
             else: operands.append(n)
-        collect(node)
+        collect(self)
         return operands
     
     @classmethod
@@ -379,6 +396,11 @@ class Associative:
         result = operands[0]
         for op in operands[1:]: result = cls(result, op)
         return result
+    
+    def _equals(self, other) -> bool:
+        self_flat = self.to_list() 
+        other_flat = other.to_list()
+        return self_flat == other_flat
         
 class AssociativeLeft(Associative):
     def associative(self) -> Operator:
@@ -442,7 +464,7 @@ class Distributive:
         create_node = (lambda operand: cls(deepcopy(node), operand)) \
         if node is left else (lambda operand: cls(operand, deepcopy(node)))
         
-        nodes_list = sum_class.to_list(other)
+        nodes_list = other.to_list()
         for i, operand in enumerate(nodes_list):
             nodes_list[i] = create_node(operand)
         new_sum = sum_class.from_list(nodes_list)
@@ -458,7 +480,7 @@ class Distributive:
             raise ValueError('Разные операторы у аргументов')
         if any(arg != args[0] for arg in args[1:]):
             raise ValueError('Аргументы не равны')
-        nodes_list = sum_class.to_list(max_parent)
+        nodes_list = max_parent.to_list()
         all_children = [child for op in nodes_list if isinstance(op, Operator) 
                        for child in op.operands]
         if any(arg not in all_children for arg in args):
@@ -504,14 +526,14 @@ class AssociativeCommutative(AssociativeBoth, Commutative):
         do_commutative(self.associative())
 
     def __hash__(self):
-        nodes_list = self.to_list(self)
+        nodes_list = self.to_list()
         return hash((self.__class__,) + tuple(sorted(
             str(op.value) if isinstance(op, Value) else op.__class__.__name__
             for op in nodes_list)))
     
     def _equals(self, other) -> bool:
-        self_flat = self.to_list(self) 
-        other_flat = self.to_list(other)    
+        self_flat = self.to_list() 
+        other_flat = other.to_list()    
         return sorted(self_flat, key=hash) == sorted(other_flat, key=hash)
 
 class AssociativeDistributive(AssociativeBoth, Distributive):
@@ -532,7 +554,7 @@ class AssociativeDistributive(AssociativeBoth, Distributive):
     @classmethod
     def find_direction(cls, node: Node) -> bool | None:
         max_mult = cls.get_max_mult(node.parent)
-        nodes_list = cls.to_list(max_mult)
+        nodes_list = max_mult.to_list()
         node_index = nodes_list.index(node)
         left_is_sum = (node_index > 0 and nodes_list[node_index-1].__class__ in cls.distributive_over)
         right_is_sum = (node_index < len(nodes_list)-1 and nodes_list[node_index+1].__class__ in cls.distributive_over)
@@ -553,7 +575,8 @@ class Plus(AssociativeCommutative, Infix, Operator ):
 
     def __init__(self, addend1, addend2): super().__init__(addend1, addend2)
         
-    def __str__(self): return '+'
+    @cached_property    
+    def symbol(self): return '+'
 
     def result(self) -> Node:
         if self.one == Number.ZERO: return self.two
@@ -567,7 +590,8 @@ class BinaryMinus(Associative, Infix, Operator):
 
     def __init__(self, minuend, subtrahend): super().__init__(minuend, subtrahend)
 
-    def __str__(self): return '-'
+    @cached_property    
+    def symbol(self): return '-'
 
     def result(self) -> Node:
         if self.one == Number.ZERO: return UnaryMinus(self.two)
@@ -590,7 +614,8 @@ class Mult(AssociativeCommutative, AssociativeDistributive, Infix, Operator):
 
     def __init__(self, factor1, factor2): super().__init__(factor1, factor2)
 
-    def __str__(self): return '*'
+    @cached_property    
+    def symbol(self): return '*'
 
     def result(self) -> Node:
         if self.one == Number.ONE: return self.two
@@ -606,7 +631,8 @@ class Div(AssociativeLeft, Infix, Operator):
 
     def __init__(self, dividend, divisor): super().__init__(dividend, divisor)
 
-    def __str__(self): return '/'
+    @cached_property    
+    def symbol(self): return '/'
 
     def result(self) -> Node:
         if self.one == Number.ZERO: return Number(0)
@@ -620,7 +646,8 @@ class Pow(AssociativeRight, Infix, Operator):
     
     def __init__(self, base, degree): super().__init__(base, degree)
 
-    def __str__(self): return '^'
+    @cached_property    
+    def symbol(self): return '^'
 
     def result(self) -> Node:
         if self.two == Number.ONE: return self.one
@@ -633,7 +660,8 @@ class UnaryMinus(Prefix, Operator):
 
     def __init__(self, operand): super().__init__(operand)
 
-    def __str__(self): return '-'
+    @cached_property    
+    def symbol(self): return '-'
 
     def result(self) -> Node:
         if isinstance(self.one, UnaryMinus): return self.one.one
@@ -647,7 +675,8 @@ class Sin(Prefix, Operator):
 
     def __int__(self, x): super().__init__(x)
 
-    def __str__(self): return 'sin'
+    @cached_property    
+    def symbol(self): return 'sin'
 
     def result(self) -> Node:
         try: return Number(math.sin(self.one))
@@ -660,7 +689,8 @@ class Cos(Prefix, Operator):
 
     def __init__(self, x): super().__int__(x)
 
-    def __str__(self): return 'cos'
+    @cached_property    
+    def symbol(self): return 'cos'
 
     def result(self) -> Node:
         try: return Number(math.cos(self.one))
@@ -676,7 +706,8 @@ class Log(Prefix, Operator):
             if base <= 0 or base == 1: raise ValueError(f'основание логарифма: {base}')
         super().__init__(base, x)
 
-    def __str__(self): return 'log'
+    @cached_property    
+    def symbol(self): return 'log'
 
     def result(self) -> Node:
         try: return Number(math.log(self.two.value, self.one.value))
@@ -689,7 +720,8 @@ class Lg(Prefix, Operator):
 
     def __init__(self, x: Node): super().__init__(x)
 
-    def __str__(self): return 'lg'
+    @cached_property    
+    def symbol(self): return 'lg'
 
     def result(self) -> Node:
         try: return Number(math.log(self.one.value, 10))
@@ -702,10 +734,20 @@ class Ln(Prefix, Operator):
 
     def __init__(self, x: Node): super().__init__(x)
 
-    def __str__(self): return 'ln'
+    @cached_property    
+    def symbol(self): return 'ln'
 
     def result(self) -> Node:
         try: return Number(math.log(self.one.value, math.e))
         except TypeError: return NotImplemented
   
 #####################################################################################        
+
+def register_actions(cls = Node):
+    for sub in cls.__subclasses__():
+        for atr in sub.__dict__.values():
+            if hasattr(atr, 'action_name'):
+                sub.ACTIONS[atr.action_name] = atr
+        register_actions(sub)
+
+register_actions()

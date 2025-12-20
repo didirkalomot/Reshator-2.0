@@ -1,17 +1,17 @@
-import ast
+import nodes
 
 operations = {
-    '^' : ast.Pow,
-    '~' : ast.UnaryMinus,
-    '*' : ast.Mult,
-    '/' : ast.Div,
-    '+' : ast.Plus,
-    '-' : ast.BinaryMinus,
-    'sin' : ast.Sin,
-    'cos' : ast.Cos,
-    'log' : ast.Log, 
-    'lg' : ast.Lg,
-    'ln' : ast.Ln
+    '^' : nodes.Pow,
+    '~' : nodes.UnaryMinus,
+    '*' : nodes.Mult,
+    '/' : nodes.Div,
+    '+' : nodes.Plus,
+    '-' : nodes.BinaryMinus,
+    'sin' : nodes.Sin,
+    'cos' : nodes.Cos,
+    'log' : nodes.Log, 
+    'lg' : nodes.Lg,
+    'ln' : nodes.Ln
 }
 
 def is_operator(token) -> bool:
@@ -111,12 +111,12 @@ def infix_to_prefix(expression: str) -> str:
         elif is_operator(token):
             fixity = get_operator_fixity(token)
             
-            if fixity == ast.Fixity.INFIX:
+            if fixity == nodes.Fixity.INFIX:
                 while (stack and stack[-1] != '(' and 
                        precedence.get(stack[-1], 0) >= precedence.get(token, 0)):
                     output.append(stack.pop())
                 stack.append(token)
-            elif fixity == ast.Fixity.PREFIX:
+            elif fixity == nodes.Fixity.PREFIX:
                 stack.append(token)
         else:
             output.append(token)
@@ -130,7 +130,7 @@ def infix_to_prefix(expression: str) -> str:
     return build_prefix_string(output)
 """
 
-def create_ast_tree(string: str) -> ast.Node:
+def create_nodes_tree(string: str) -> nodes.Node:
     string = string.replace(' ', '')
     stack = []
     i = 0
@@ -157,8 +157,8 @@ def create_ast_tree(string: str) -> ast.Node:
             continue
         else:
             if token in operations: stack.append(token)
-            elif is_number(token): stack.append(ast.Number(float(token)))
-            elif is_letter(token): stack.append(ast.Letter(token))
+            elif is_number(token): stack.append(nodes.Number(float(token)))
+            elif is_letter(token): stack.append(nodes.Letter(token))
             else: raise ValueError(f'неизвестный токен: {token}')
     if len(stack) != 1: raise ValueError(f'недопустимое выражение')
     return stack[0]

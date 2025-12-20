@@ -1,8 +1,9 @@
 import parse
-import ast
 
-Root = parse.create_ast_tree('*(a, +(b, -(c, d)))')
+Root = parse.create_nodes_tree('/(+(5, *(+(a, b), 10)), 5)')
 
-for node in Root.two:
-    print(node)
+print(Root)
+print(Root.operators[2].actions)
+
+
 
