@@ -15,7 +15,9 @@ class Node:
     ACTIONS = {}
 
     @property
-    def actions(self) -> dict: return MappingProxyType(self.__class__.ACTIONS)
+    def actions(self) -> tuple: return tuple(self.__class__.ACTIONS.keys())
+
+    def do_action(self, name_action: str, *args): self.actions[name_action](self, *args)
 
     __slots__ = ['parent']
 
@@ -335,6 +337,8 @@ class Operator(Node):
 #######################################
 
 class Prefix:
+    ARITY = 1
+
     def __iter__(self):
         yield self
         yield '('
@@ -366,6 +370,8 @@ class Infix:
         else: yield from right
 
 class Postfix:
+    ARITY = 1
+
     def __iter__(self):
         yield '('
         for op in self.operands: yield from op
@@ -569,8 +575,7 @@ class AssociativeDistributive(AssociativeBoth, Distributive):
     
 #####################################################################################
 
-class Plus(AssociativeCommutative, Infix, Operator ):
-    ARITY = 2             
+class Plus(AssociativeCommutative, Infix, Operator ):         
     PRIORITY = 5
 
     def __init__(self, addend1, addend2): super().__init__(addend1, addend2)
@@ -584,8 +589,7 @@ class Plus(AssociativeCommutative, Infix, Operator ):
         try: return self.one + self.two
         except TypeError: return NotImplemented
           
-class BinaryMinus(Associative, Infix, Operator):
-    ARITY = 2            
+class BinaryMinus(Associative, Infix, Operator):           
     PRIORITY = 5
 
     def __init__(self, minuend, subtrahend): super().__init__(minuend, subtrahend)
@@ -625,8 +629,7 @@ class Mult(AssociativeCommutative, AssociativeDistributive, Infix, Operator):
         try: return self.one * self.two
         except TypeError: return NotImplemented
 
-class Div(AssociativeLeft, Infix, Operator):
-    ARITY = 2             
+class Div(AssociativeLeft, Infix, Operator):           
     PRIORITY = 4
 
     def __init__(self, dividend, divisor): super().__init__(dividend, divisor)
@@ -640,8 +643,7 @@ class Div(AssociativeLeft, Infix, Operator):
         try: return self.one / self.two
         except TypeError: return NotImplemented
                    
-class Pow(AssociativeRight, Infix, Operator):
-    ARITY = 2             
+class Pow(AssociativeRight, Infix, Operator):           
     PRIORITY = 2
     
     def __init__(self, base, degree): super().__init__(base, degree)
@@ -743,11 +745,12 @@ class Ln(Prefix, Operator):
   
 #####################################################################################        
 
-def register_actions(cls = Node):
+def register_actions(cls=Node):
     for sub in cls.__subclasses__():
-        for atr in sub.__dict__.values():
-            if hasattr(atr, 'action_name'):
-                sub.ACTIONS[atr.action_name] = atr
+        for base in sub.__mro__: 
+            for value in base.__dict__.values():
+                if hasattr(value, 'action_name'):
+                    sub.ACTIONS[value.action_name] = value
         register_actions(sub)
 
 register_actions()
