@@ -17,7 +17,7 @@ class Node:
     @property
     def actions(self) -> tuple: return tuple(self.__class__.ACTIONS.keys())
 
-    def do_action(self, name_action: str, *args): self.actions[name_action](self, *args)
+    def do_action(self, name_action: str, *args): self.__class__.ACTIONS[name_action](self, *args)
 
     __slots__ = ['parent']
 
@@ -69,10 +69,13 @@ class Node:
             for i, oper in enumerate(self.parent.operands):
                 if oper is self: 
                     self.parent.operands[i] = new
-                    new.parent = self.parent
+                    new.parent = self.parent   
 
-    @action('закрыть в скобки')
-    def clouse(self): self.replace(Brackets(self))
+    @action('представить как противоположный')
+    def as_neg(self): self.replace(UnaryMinus(UnaryMinus(deepcopy(self))))
+
+    @action('представить как дробь')
+    def as_fraction(self): self.replace(Div(deepcopy(self), Number(1)))
 
 #####################################################################################
 
@@ -99,20 +102,13 @@ class Value(Node):
         result.value = deepcopy(self.value, memo)
         return result
     
-    @action('представить как противоположный')
-    def as_neg(self): self.replace(UnaryMinus(UnaryMinus(self)))
-
-    @action('представить как дробь')
-    def as_fraction(self): self.replace(Div(self, Number(1)))
-
 class Number(Value):
     def __init__(self, value: float): super().__init__(value)
 
     @cached_property      
     def symbol(self) -> str:
-        value = round(self.value, 4) #под вопросом
-        if value.is_integer(): return str(int(value))
-        else: return str(value)
+        if self.value.is_integer(): return str(int(self.value))
+        else: return str(self.value)
 
     def __add__(self, other):
         if isinstance(other, Number):
@@ -202,15 +198,6 @@ class Letter(Value):
     def __truediv__(self, other):
         if self == other: return Number(1)
         return NotImplemented
-
-class Brackets(Value):
-    def __init__(self, value: Node): super().__init__(value)
-
-    @cached_property
-    def symbol(self) -> str: f'({str(self.value)})'
-
-    @action('открыть скобки')
-    def open(self): self.replace(self.value)
 
 #####################################################################################
 
@@ -381,10 +368,9 @@ class Postfix:
 class Associative:
     @action('выполнить')
     def work(self):
-        def do_work(operator):
-            if (result := operator.result()) is not NotImplemented:
-                operator.replace(result)
-        do_work(self.associative())
+        operator = self.associative()
+        if (result := operator.result()) is not NotImplemented:
+            operator.replace(result)
                 
     def to_list(self) -> list[Node]:
         operands = []
@@ -410,7 +396,7 @@ class Associative:
         
 class AssociativeLeft(Associative):
     def associative(self) -> Operator:
-        """a ∘ (b ∘ c) → (a ∘ b) ∘ c - возвращает self.one"""
+        """a ∘ (b ∘ c) → (a ∘ b) ∘ c"""
         current = self
         while isinstance(current.two, self.__class__):
             current.one = self.__class__(current.one, current.two.one)
@@ -420,7 +406,7 @@ class AssociativeLeft(Associative):
 
 class AssociativeRight(Associative):
     def associative(self) -> Operator:
-        """(a ∘ b) ∘ c → a ∘ (b ∘ c) - возвращает self.two"""
+        """(a ∘ b) ∘ c → a ∘ (b ∘ c)"""
         current = self
         while isinstance(current.one, self.__class__):
             current.two = self.__class__(current.one.two, current.two)
@@ -453,8 +439,7 @@ class Commutative:
     @action('коммутативность')
     def commutative(self):
         """a ∘ b → b ∘ a - поменять операнды местами"""
-        if all(isinstance(oper, Value) for oper in self.operands):
-            self.one, self.two = self.two, self.one
+        self.one, self.two = self.two, self.one
 
 class Distributive:
     distributive_over: tuple[type[Associative], ...]
@@ -527,9 +512,8 @@ class Distributive:
 class AssociativeCommutative(AssociativeBoth, Commutative):
     @action('коммутативность')
     def commutative(self):
-        def do_commutative(operator):
-            operator.one, operator.two = operator.two, operator.one
-        do_commutative(self.associative())
+        self = self.associative()
+        self.one, self.two = self.two, self.one 
 
     def __hash__(self):
         nodes_list = self.to_list()
@@ -605,7 +589,9 @@ class BinaryMinus(Associative, Infix, Operator):
 
     @action('представить как сумму')
     def as_plus(self):
-        if isinstance(self.two, UnaryMinus): 
+        if isinstance(self.two, Number): 
+            self.replace(Plus(self.one, -self.two))  
+        elif isinstance(self.two, UnaryMinus): 
             self.replace(Plus(self.one, self.two.one))  
         else:
             self.replace(Plus(self.one, UnaryMinus(self.two)))
@@ -747,6 +733,7 @@ class Ln(Prefix, Operator):
 
 def register_actions(cls=Node):
     for sub in cls.__subclasses__():
+        sub.ACTIONS = {}
         for base in sub.__mro__: 
             for value in base.__dict__.values():
                 if hasattr(value, 'action_name'):

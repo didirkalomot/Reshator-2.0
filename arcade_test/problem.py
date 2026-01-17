@@ -1,6 +1,11 @@
 import parse
+import nodes
 
-Root = parse.create_nodes_tree('/(+(5, *(+(3, 2), 10)), 5)')
+Root = parse.prefix_to_tree('*(*(1, 2), *(3, *(4, 5)))')
 
 print(Root)
-print(Root.operators[0].actions)
+Root.operators[0].work()
+print(Root)
+
+
+
