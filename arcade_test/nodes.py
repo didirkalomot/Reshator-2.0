@@ -173,7 +173,6 @@ Number.ZERO = Number(0)
 Number.ONE = Number(1)
 
 class Letter(Value):
-
     def __init__(self, value: str):
         if value and value[0].isalpha():
             super().__init__(value)
@@ -444,6 +443,7 @@ class Commutative:
 class Distributive:
     distributive_over: tuple[type[Associative], ...]
 
+    @action('внести в скобку')
     @classmethod
     def factor_in(cls, node: Node):
         parent = node.parent
@@ -461,6 +461,7 @@ class Distributive:
         new_sum = sum_class.from_list(nodes_list)
         parent.replace(new_sum)
 
+    @action('вынести за скобку')
     @classmethod
     def factor_out(cls, *args: Node):
         max_parent = cls.get_max_sum(args[0].parent)
@@ -527,6 +528,7 @@ class AssociativeCommutative(AssociativeBoth, Commutative):
         return sorted(self_flat, key=hash) == sorted(other_flat, key=hash)
 
 class AssociativeDistributive(AssociativeBoth, Distributive):
+    @action('внести в скобку')
     @classmethod
     def factor_in(cls, node: Node, direction_right: bool = None):
         if direction_right is None:

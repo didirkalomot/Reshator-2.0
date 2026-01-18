@@ -1,11 +1,17 @@
 import parse
 import nodes
 
-Root = parse.prefix_to_tree('*(*(1, 2), *(3, *(4, 5)))')
+Root = parse.prefix_to_tree('*(+(a, b), 2)')
 
-print(Root)
-Root.operators[0].work()
-print(Root)
+while True:
+    index = input(f'{Root}\n')
+    if index == '': break
+    elem = Root.nodes[int(index)]
+    print(type(elem).__name__)
+    action_name = input(f'{elem.actions}\n') 
+    if action_name == '': break
+    elem.do_action(action_name)
+
 
 
 
