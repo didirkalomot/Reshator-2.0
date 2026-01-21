@@ -1,8 +1,6 @@
 from __future__ import annotations
 from functools import cached_property
-from types import MappingProxyType
 from copy import deepcopy
-import enum
 import math
 
 def action(name):
@@ -198,23 +196,10 @@ class Letter(Value):
         if self == other: return Number(1)
         return NotImplemented
 
-#####################################################################################
-
-class Fixity(enum.Enum):
-    PREFIX = -1
-    INFIX = 0
-    POSTFIX = 1
-
-class Associativity(enum.Enum):
-    LEFT = -1      
-    RIGHT = 1
-    BOTH = 2 
-
 #######################################
 
 class Operator(Node):
     ARITY = 2
-    PRIORITY = 1
 
     __slots__ = ['operands']
 
@@ -224,12 +209,6 @@ class Operator(Node):
             node.parent = self
         super().__init__()
 
-    @cached_property
-    def fixity(self) -> Fixity:  
-        if isinstance(self, Prefix): return Fixity.PREFIX
-        if isinstance(self, Infix): return Fixity.INFIX
-        else: return Fixity.POSTFIX
-
     @property
     def arity(self) -> int:
         if self.__class__.Arity is None: return len(self.operands)
@@ -237,13 +216,6 @@ class Operator(Node):
 
     @cached_property
     def priority(self) -> int: return self.__class__.PRIORITY
-
-    @cached_property
-    def associativity(self) -> Associativity | None: 
-        if isinstance(self, AssociativeBoth): return Associativity.BOTH
-        if isinstance(self, AssociativeLeft): return Associativity.LEFT
-        if isinstance(self, AssociativeRight): return Associativity.RIGHT
-        else: return None
 
     @cached_property
     def commutativity(self) -> bool: return isinstance(self, Commutative)
@@ -336,13 +308,12 @@ class Infix:
 
     def needs_parentheses(self, child: Node, is_left: bool) -> bool:
         if not isinstance(child, Operator): return False
-        if child.priority > self.priority: return True
-        if child.__class__ != self.__class__:
-            if isinstance(self, Plus) and isinstance(child, BinaryMinus) \
-            or isinstance(self, BinaryMinus) and isinstance(child, Plus): return False 
+        if child.priority < self.priority: return True
+        if child.priority == self.priority:
+            if child.__class__ != self.__class__: return True
+            if isinstance(self, AssociativeLeft): return not is_left
+            if isinstance(self, AssociativeRight): return is_left
             return True
-        if self.associativity is Associativity.LEFT and not is_left: return True  
-        if self.associativity is Associativity.RIGHT and is_left: return True     
         return False
 
     def __iter__(self):
@@ -659,7 +630,6 @@ class UnaryMinus(Prefix, Operator):
         except TypeError: return NotImplemented
 
 class Sin(Prefix, Operator):
-    FIXITY = Fixity.PREFIX
     ARITY = 1
     PRIORITY = 1                        
 
@@ -673,7 +643,6 @@ class Sin(Prefix, Operator):
         except TypeError: return NotImplemented
         
 class Cos(Prefix, Operator):
-    FIXITY = Fixity.PREFIX
     ARITY = 1
     PRIORITY = 1                         
 
@@ -687,7 +656,6 @@ class Cos(Prefix, Operator):
         except TypeError: return NotImplemented
         
 class Log(Prefix, Operator):
-    FIXITY = Fixity.PREFIX
     ARITY = 2                          
     PRIORITY = 1                         
 
@@ -704,7 +672,6 @@ class Log(Prefix, Operator):
         except TypeError: return NotImplemented
         
 class Lg(Prefix, Operator):
-    FIXITY = Fixity.PREFIX
     ARITY = 1
     PRIORITY = 1                       
 
@@ -718,7 +685,6 @@ class Lg(Prefix, Operator):
         except TypeError: return NotImplemented
     
 class Ln(Prefix, Operator):
-    FIXITY = Fixity.PREFIX
     ARITY = 1
     PRIORITY = 1                       
 
