@@ -1,3 +1,4 @@
+import re
 import nodes
 
 operations = {
@@ -14,6 +15,68 @@ operations = {
     'ln' : nodes.Ln
 }
 
+operations_sorted = sorted(operations.keys(), key=len, reverse=True)
+operations_pattern = re.compile(rf'({"|".join(map(re.escape, operations_sorted))})')
+fist_chars_operations = {op[0] for op in operations.keys()}
+
+def remove_bracfast(string: str) -> str:
+    while string.startswith('(') and string.endswith(')'):
+        balance = 1
+        for i in range(1, len(string) - 1):
+            if string[i] == '(': balance += 1
+            elif string[i] == ')':
+                balance -= 1
+                if balance == 0: return string 
+        string = string[1:-1]
+    return string
+
+def find_last_operation(string: str) -> tuple[int, str] | None:
+    candidates = []
+    balance = 0
+    i = 0
+    n = len(string)
+    
+    while i < n:
+        char = string[i]
+        if char == '(': balance += 1; i += 1; continue
+        elif char == ')': balance -= 1; i += 1; continue        
+        if char not in fist_chars_operations: i += 1; continue
+
+        symbol = None; symbol_length = 0
+        for op in operations_sorted:
+            if string.startswith(op, i):
+                if len(op) > 1:
+                    if i > 0 and string[i-1].isalnum():
+                        i += 1; continue
+                    right_pos = i + len(op)
+                    if right_pos < n and string[right_pos].isalnum() and string[right_pos] != '(':
+                        i += 1; continue
+                symbol = op
+                symbol_length = len(op)
+                break
+            
+        if symbol:
+            if balance == 0:
+                candidates.append((i, symbol, operations[symbol].PRIORITY))
+            i += symbol_length 
+        else: i += 1
+
+    if not candidates: return None
+    return min(candidates, key=lambda x: x[2])[:-1]
+    
+def infix_to_prefix(string: str) -> str:
+    def recursive_infix_to_prefix(string: str) -> str: 
+        string = remove_bracfast(string)
+        if is_number(string) or is_letter(string): return string
+        else:
+            result = find_last_operation(string)
+            if result is None: raise ValueError(f'не корректная строка {string}')
+            
+            position, symbol = result
+            cls = operations[symbol]
+                    
+    return recursive_infix_to_prefix(string.replace(' ', ''))
+           
 def is_operator(token) -> bool:
     return token in operations
 
@@ -22,14 +85,11 @@ def is_number(string: str) -> bool:
     except ValueError: return False
     
 def is_letter(string: str) -> bool:
-    return len(string) > 0 and string[0].isalpha()
-
-#def infix_to_prefix(string: str) -> str:
-#    string = string.replace(' ', '')
-#    for symbol in string:
-#        if symbol in operations:
-#            if isinstance(operations[symbol], nodes.Infix):
-
+    if not string[0].isalpha(): return False
+    for char in string: 
+        if not (char.isalnum()): return False
+    if string in operations: return False
+    return True
 
 def prefix_to_tree(string: str) -> nodes.Node:
     string = string.replace(' ', '')

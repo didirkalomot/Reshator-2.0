@@ -200,6 +200,7 @@ class Letter(Value):
 
 class Operator(Node):
     ARITY = 2
+    PRIORITY = 1
 
     __slots__ = ['operands']
 
@@ -532,7 +533,7 @@ class AssociativeDistributive(AssociativeBoth, Distributive):
     
 #####################################################################################
 
-class Plus(AssociativeCommutative, Infix, Operator ):         
+class Plus(AssociativeCommutative, Infix, Operator):         
     PRIORITY = 5
 
     def __init__(self, addend1, addend2): super().__init__(addend1, addend2)
@@ -571,8 +572,7 @@ class BinaryMinus(Associative, Infix, Operator):
         
 class Mult(AssociativeCommutative, AssociativeDistributive, Infix, Operator):
     distributive_over = (Plus, BinaryMinus)
-         
-    ARITY = 2                          
+                                   
     PRIORITY = 4    
 
     def __init__(self, factor1, factor2): super().__init__(factor1, factor2)
