@@ -4,9 +4,6 @@ import nodes
 #Root = parse.prefix_to_tree('+(+(1, +(2, +(3, 4))), 5)')
 #print(Root)
 
-s = 'ln(3, 34) + 4'
-print(parse.infix_to_prefix(s))
-
 '''
 while True:
     index = input(f'{Root}\n')
@@ -17,6 +14,14 @@ while True:
     if action_name == '': break
     elem.do_action(action_name)
 '''
+s = '2 + 34 - 43 * (~(34 * ln(34)))'
+
+problem = parse.infix_to_tree(s)
+
+problem.print_expression()
+
+
+
 
 
 

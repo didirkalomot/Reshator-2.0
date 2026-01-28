@@ -1,7 +1,7 @@
 import re
 import nodes
 
-operations = {
+operations : dict[str : type[nodes.Operator]] = {
     '^' : nodes.Pow,
     '~' : nodes.UnaryMinus,
     '*' : nodes.Mult,
@@ -16,8 +16,21 @@ operations = {
 }
 
 operations_sorted = sorted(operations.keys(), key=len, reverse=True)
-operations_pattern = re.compile(rf'({"|".join(map(re.escape, operations_sorted))})')
 fist_chars_operations = {op[0] for op in operations.keys()}
+
+def is_operator(token) -> bool:
+    return token in operations
+
+def is_number(string: str) -> bool:
+    try: float(string); return True
+    except ValueError: return False
+    
+def is_letter(string: str) -> bool:
+    if not string[0].isalpha(): return False
+    for char in string: 
+        if not (char.isalnum()): return False
+    if string in operations: return False
+    return True
 
 def remove_bracfast(string: str) -> str:
     while string.startswith('(') and string.endswith(')'):
@@ -30,7 +43,7 @@ def remove_bracfast(string: str) -> str:
         string = string[1:-1]
     return string
 
-def find_last_operation(string: str) -> tuple[int, str] | None:
+def find_last_operation(string: str):
     candidates = []
     balance = 0
     i = 0
@@ -62,7 +75,14 @@ def find_last_operation(string: str) -> tuple[int, str] | None:
         else: i += 1
 
     if not candidates: return None
-    return min(candidates, key=lambda x: x[2])[:-1]
+
+    max_priority = max(c[2] for c in candidates)
+    candidates = [(pos, sym) for pos, sym, pri in candidates if pri == max_priority]
+
+    cls = operations[candidates[0][1]]
+
+    if issubclass(cls, nodes.Infix) and not cls.ASSOCIATIVITY_LEFT: return candidates[0]
+    else: return candidates[-1]
     
 def infix_to_prefix(string: str) -> str:
     def recursive_infix_to_prefix(string: str) -> str: 
@@ -74,22 +94,48 @@ def infix_to_prefix(string: str) -> str:
             
             position, symbol = result
             cls = operations[symbol]
-                    
-    return recursive_infix_to_prefix(string.replace(' ', ''))
-           
-def is_operator(token) -> bool:
-    return token in operations
 
-def is_number(string: str) -> bool:
-    try: float(string); return True
-    except ValueError: return False
-    
-def is_letter(string: str) -> bool:
-    if not string[0].isalpha(): return False
-    for char in string: 
-        if not (char.isalnum()): return False
-    if string in operations: return False
-    return True
+            if issubclass(cls, nodes.Prefix):
+                remaining = string[position + len(symbol):]
+                
+                balance = 1
+                i = 1
+                while i < len(remaining) and balance > 0:
+                    if remaining[i] == '(': balance += 1
+                    elif remaining[i] == ')': balance -= 1
+                    i += 1
+                
+                inner = remaining[1:i-1]
+                rest = remaining[i:] if i < len(remaining) else ''
+                
+                args = []
+                current = ''
+                balance = 0
+                for char in inner:
+                    if char == ',' and balance == 0:
+                        args.append(current.strip())
+                        current = ''
+                    else:
+                        current += char
+                        if char == '(': balance += 1
+                        elif char == ')': balance -= 1
+                if current: args.append(current.strip())
+                
+                processed_args = [recursive_infix_to_prefix(arg) for arg in args]
+                func_part = f'{symbol}({", ".join(processed_args)})'
+                
+                if rest: return recursive_infix_to_prefix(func_part + rest)
+                return func_part
+
+            elif issubclass(cls, nodes.Infix):
+                left = recursive_infix_to_prefix(string[:position])
+                right = recursive_infix_to_prefix(string[position + len(symbol):])
+                return f'{symbol}({left},{right})'
+            
+    if not string: return None
+    return recursive_infix_to_prefix(string.replace(' ', ''))
+
+def infix_to_tree(string: str) -> nodes.Node: return prefix_to_tree(infix_to_prefix(string))
 
 def prefix_to_tree(string: str) -> nodes.Node:
     string = string.replace(' ', '')

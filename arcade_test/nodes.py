@@ -35,21 +35,20 @@ class Node:
     def operators(self) -> list[Operator]: 
         return [operator for operator in self if isinstance(operator, Operator)]
 
-    @cached_property
-    def symbol(self) -> str: return 'node'
+    def __str__(self) -> str: return 'node'
 
-    def __str__(self):
+    def print_expression(self):
         result = []
         node = self[0]
-        symbol = node if type(node) is str else node.symbol
+        symbol = str(node)
         result.append(symbol)
         for node in self[1:]:
             prev_symbol = symbol
-            symbol = node if type(node) is str else node.symbol
+            symbol = str(node)
             if not (symbol == ')' or prev_symbol == '('): result.append(' ')
             result.append(symbol)
-        return ''.join(result)
-
+        print(''.join(result)) 
+    
     def print_tree(self): print(f'[{self}]')
 
     def __deepcopy__(self, memo=None):
@@ -84,8 +83,7 @@ class Value(Node):
         self.value = value
         super().__init__()
 
-    @cached_property
-    def symbol(self) -> str: return 'value'
+    def __str__(self) -> str: return 'value'
 
     def __iter__(self): yield self
 
@@ -103,8 +101,7 @@ class Value(Node):
 class Number(Value):
     def __init__(self, value: float): super().__init__(value)
 
-    @cached_property      
-    def symbol(self) -> str:
+    def __str__(self) -> str:
         if self.value.is_integer(): return str(int(self.value))
         else: return str(self.value)
 
@@ -176,8 +173,7 @@ class Letter(Value):
             super().__init__(value)
         else: raise TypeError
 
-    @cached_property
-    def symbol(self) -> str: return self.value
+    def __str__(self) -> str: return self.value
 
     def __add__(self, other):
         if self == other: return Mult(2, deepcopy(self))
@@ -217,9 +213,6 @@ class Operator(Node):
 
     @cached_property
     def priority(self) -> int: return self.__class__.PRIORITY
-
-    @cached_property
-    def commutativity(self) -> bool: return isinstance(self, Commutative)
      
     @property
     def one(self) -> Node: return self.operands[0]
@@ -258,13 +251,13 @@ class Operator(Node):
     def print_tree(self):
         def resursive_print_tree(node: Node, is_last=True, prefix=""):
             branch = "└── " if is_last else "├── "
-            print(f"{prefix}{branch}[{node.symbol}]")
+            print(f"{prefix}{branch}[{node}]")
             if isinstance(node, Value): return
             new_prefix = prefix + ("    " if is_last else "│   ")
             for i, oper in enumerate(node.operands):
                 is_last_operand = (i == len(node.operands) - 1)
                 resursive_print_tree(oper, is_last_operand, new_prefix)
-        print(f"[{self.symbol}]")
+        print(f"[{self}]")
         if not isinstance(self, Value):
             for i, oper in enumerate(self.operands):
                 is_last_operand = (i == len(self.operands) - 1)
@@ -306,15 +299,17 @@ class Prefix:
 
 class Infix:
     ARITY = 2
+    ASSOCIATIVITY_LEFT = True
+
+    @cached_property
+    def associativity_left(self) -> bool: return self.__class__.ASSOCIATIVITY_LEFT
 
     def needs_parentheses(self, child: Node, is_left: bool) -> bool:
         if not isinstance(child, Operator): return False
         if child.priority < self.priority: return True
         if child.priority == self.priority:
             if child.__class__ != self.__class__: return True
-            if isinstance(self, AssociativeLeft): return not is_left
-            if isinstance(self, AssociativeRight): return is_left
-            return True
+            return self.associativity_left == is_left
         return False
 
     def __iter__(self):
@@ -337,6 +332,27 @@ class Postfix:
         yield self
         
 class Associative:
+    @action('ассоциативность')
+    def associative(self) -> Operator:
+        self.associative_to_left()
+        self.associative_to_right()
+    
+    def associative_to_left(self) -> Operator:
+        """a ∘ (b ∘ c) → (a ∘ b) ∘ c"""
+        current = self
+        while isinstance(current.two, self.__class__):
+            current.one = self.__class__(current.one, current.two.one)
+            current.two = current.two.two
+            current = current.one
+    
+    def associative_to_right(self) -> Operator:
+        """(a ∘ b) ∘ c → a ∘ (b ∘ c)"""
+        current = self
+        while isinstance(current.one, self.__class__):
+            current.two = self.__class__(current.one.two, current.two)
+            current.one = current.one.one
+            current = current.two
+    
     @action('выполнить')
     def work(self):
         operator = self.associative()
@@ -353,50 +369,22 @@ class Associative:
         return operands
     
     @classmethod
-    def from_list(cls, operands) -> Node | None:
+    def from_list(cls: Infix, operands) -> Node | None:
         if not operands: return None
         if len(operands) == 1: return operands[0]
-        result = operands[0]
-        for op in operands[1:]: result = cls(result, op)
+        if cls.ASSOCIATIVITY_LEFT:
+            result = operands[0]
+            for op in operands[1:]: result = cls(result, op)
+        else:
+            result = operands[-1]
+            for i in range(len(operands)-2, -1, -1):
+                result = cls(operands[i], result)
         return result
     
     def _equals(self, other) -> bool:
-        self_flat = self.to_list() 
-        other_flat = other.to_list()
-        return self_flat == other_flat
-        
-class AssociativeLeft(Associative):
-    def associative(self) -> Operator:
-        """a ∘ (b ∘ c) → (a ∘ b) ∘ c"""
-        current = self
-        while isinstance(current.two, self.__class__):
-            current.one = self.__class__(current.one, current.two.one)
-            current.two = current.two.two
-            current = current.one
-        return current
-
-class AssociativeRight(Associative):
-    def associative(self) -> Operator:
-        """(a ∘ b) ∘ c → a ∘ (b ∘ c)"""
-        current = self
-        while isinstance(current.one, self.__class__):
-            current.two = self.__class__(current.one.two, current.two)
-            current.one = current.one.one
-            current = current.two
-        return current 
-        
-    def from_list(cls, operands) -> Node | None:
-        if not operands: return None
-        if len(operands) == 1: return operands[0]
-        result = operands[-1]
-        for i in range(len(operands)-2, -1, -1):
-            result = cls(operands[i], result)
-        return result
-    
-class AssociativeBoth(AssociativeLeft, AssociativeRight):
-    def associative(self) -> Operator:
-        result = AssociativeLeft.associative(self) 
-        return AssociativeRight.associative(result)
+        self_list = self.to_list() 
+        other_list = other.to_list()
+        return self_list == other_list
 
 class Commutative:
     def __hash__(self):
@@ -482,7 +470,7 @@ class Distributive:
     def is_dist_over(cls, node_cls: type) -> bool:
         return node_cls in cls.distributive_over
         
-class AssociativeCommutative(AssociativeBoth, Commutative):
+class AssociativeCommutative(Associative, Commutative):
     @action('коммутативность')
     def commutative(self):
         self = self.associative()
@@ -499,7 +487,7 @@ class AssociativeCommutative(AssociativeBoth, Commutative):
         other_flat = other.to_list()    
         return sorted(self_flat, key=hash) == sorted(other_flat, key=hash)
 
-class AssociativeDistributive(AssociativeBoth, Distributive):
+class AssociativeDistributive(Associative, Distributive):
     @action('внести в скобку')
     @classmethod
     def factor_in(cls, node: Node, direction_right: bool = None):
@@ -537,9 +525,8 @@ class Plus(AssociativeCommutative, Infix, Operator):
     PRIORITY = 5
 
     def __init__(self, addend1, addend2): super().__init__(addend1, addend2)
-        
-    @cached_property    
-    def symbol(self): return '+'
+          
+    def __str__(self): return '+'
 
     def result(self) -> Node:
         if self.one == Number.ZERO: return self.two
@@ -547,13 +534,12 @@ class Plus(AssociativeCommutative, Infix, Operator):
         try: return self.one + self.two
         except TypeError: return NotImplemented
           
-class BinaryMinus(Associative, Infix, Operator):           
+class BinaryMinus(Infix, Operator):           
     PRIORITY = 5
 
     def __init__(self, minuend, subtrahend): super().__init__(minuend, subtrahend)
 
-    @cached_property    
-    def symbol(self): return '-'
+    def __str__(self): return '-'
 
     def result(self) -> Node:
         if self.one == Number.ZERO: return UnaryMinus(self.two)
@@ -576,9 +562,8 @@ class Mult(AssociativeCommutative, AssociativeDistributive, Infix, Operator):
     PRIORITY = 4    
 
     def __init__(self, factor1, factor2): super().__init__(factor1, factor2)
-
-    @cached_property    
-    def symbol(self): return '*'
+   
+    def __str__(self): return '*'
 
     def result(self) -> Node:
         if self.one == Number.ONE: return self.two
@@ -588,13 +573,12 @@ class Mult(AssociativeCommutative, AssociativeDistributive, Infix, Operator):
         try: return self.one * self.two
         except TypeError: return NotImplemented
 
-class Div(AssociativeLeft, Infix, Operator):           
+class Div(Infix, Operator):           
     PRIORITY = 4
 
     def __init__(self, dividend, divisor): super().__init__(dividend, divisor)
-
-    @cached_property    
-    def symbol(self): return '/'
+ 
+    def __str__(self): return '/'
 
     def result(self) -> Node:
         if self.one == Number.ZERO: return Number(0)
@@ -602,13 +586,13 @@ class Div(AssociativeLeft, Infix, Operator):
         try: return self.one / self.two
         except TypeError: return NotImplemented
                    
-class Pow(AssociativeRight, Infix, Operator):           
+class Pow(Infix, Operator):           
     PRIORITY = 2
+    ASSOCIATIVITY_LEFT = False
     
     def __init__(self, base, degree): super().__init__(base, degree)
-
-    @cached_property    
-    def symbol(self): return '^'
+   
+    def __str__(self): return '^'
 
     def result(self) -> Node:
         if self.two == Number.ONE: return self.one
@@ -620,9 +604,8 @@ class UnaryMinus(Prefix, Operator):
     PRIORITY = 3       
 
     def __init__(self, operand): super().__init__(operand)
-
-    @cached_property    
-    def symbol(self): return '-'
+ 
+    def __str__(self): return '-'
 
     def result(self) -> Node:
         if isinstance(self.one, UnaryMinus): return self.one.one
@@ -634,9 +617,8 @@ class Sin(Prefix, Operator):
     PRIORITY = 1                        
 
     def __int__(self, x): super().__init__(x)
-
-    @cached_property    
-    def symbol(self): return 'sin'
+    
+    def __str__(self): return 'sin'
 
     def result(self) -> Node:
         try: return Number(math.sin(self.one))
@@ -647,9 +629,8 @@ class Cos(Prefix, Operator):
     PRIORITY = 1                         
 
     def __init__(self, x): super().__int__(x)
-
-    @cached_property    
-    def symbol(self): return 'cos'
+  
+    def __str__(self): return 'cos'
 
     def result(self) -> Node:
         try: return Number(math.cos(self.one))
@@ -664,8 +645,7 @@ class Log(Prefix, Operator):
             if base <= 0 or base == 1: raise ValueError(f'основание логарифма: {base}')
         super().__init__(base, x)
 
-    @cached_property    
-    def symbol(self): return 'log'
+    def __str__(self): return 'log'
 
     def result(self) -> Node:
         try: return Number(math.log(self.two.value, self.one.value))
@@ -677,8 +657,7 @@ class Lg(Prefix, Operator):
 
     def __init__(self, x: Node): super().__init__(x)
 
-    @cached_property    
-    def symbol(self): return 'lg'
+    def __str__(self): return 'lg'
 
     def result(self) -> Node:
         try: return Number(math.log(self.one.value, 10))
@@ -689,9 +668,8 @@ class Ln(Prefix, Operator):
     PRIORITY = 1                       
 
     def __init__(self, x: Node): super().__init__(x)
-
-    @cached_property    
-    def symbol(self): return 'ln'
+   
+    def __str__(self): return 'ln'
 
     def result(self) -> Node:
         try: return Number(math.log(self.one.value, math.e))
