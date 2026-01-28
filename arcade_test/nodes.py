@@ -61,12 +61,13 @@ class Node:
 
     def _equals(self, other): raise NotImplementedError()
     
-    def replace(self, new):
+    def replace(self, new: Node):
         if self.parent is not None:
             for i, oper in enumerate(self.parent.operands):
                 if oper is self: 
                     self.parent.operands[i] = new
-                    new.parent = self.parent   
+                    new.parent = self.parent
+        
 
     @action('представить как противоположный')
     def as_neg(self): self.replace(UnaryMinus(UnaryMinus(deepcopy(self))))
@@ -306,10 +307,10 @@ class Infix:
 
     def needs_parentheses(self, child: Node, is_left: bool) -> bool:
         if not isinstance(child, Operator): return False
-        if child.priority < self.priority: return True
-        if child.priority == self.priority:
-            if child.__class__ != self.__class__: return True
-            return self.associativity_left == is_left
+        if child.priority <= self.priority: return True
+        #if child.priority == self.priority:
+            #if child.__class__ != self.__class__: return True
+            #return self.associativity_left != is_left
         return False
 
     def __iter__(self):
@@ -332,33 +333,20 @@ class Postfix:
         yield self
         
 class Associative:
-    @action('ассоциативность')
-    def associative(self) -> Operator:
-        self.associative_to_left()
-        self.associative_to_right()
-    
-    def associative_to_left(self) -> Operator:
+    @action('ассоциативность влево')
+    def associative_left(self) -> Operator:
         """a ∘ (b ∘ c) → (a ∘ b) ∘ c"""
-        current = self
-        while isinstance(current.two, self.__class__):
-            current.one = self.__class__(current.one, current.two.one)
-            current.two = current.two.two
-            current = current.one
+        if isinstance(self.two, self.__class__):
+            self.one = self.__class__(self.one, self.two.one)
+            self.two = self.two.two
     
-    def associative_to_right(self) -> Operator:
+    @action('ассоциативность вправо')
+    def associative_right(self) -> Operator:
         """(a ∘ b) ∘ c → a ∘ (b ∘ c)"""
-        current = self
-        while isinstance(current.one, self.__class__):
-            current.two = self.__class__(current.one.two, current.two)
-            current.one = current.one.one
-            current = current.two
-    
-    @action('выполнить')
-    def work(self):
-        operator = self.associative()
-        if (result := operator.result()) is not NotImplemented:
-            operator.replace(result)
-                
+        if isinstance(self.one, self.__class__):
+            self.two = self.__class__(self.one.two, self.two)
+            self.one = self.one.one
+                     
     def to_list(self) -> list[Node]:
         operands = []
         def collect(n):
@@ -628,7 +616,7 @@ class Cos(Prefix, Operator):
     ARITY = 1
     PRIORITY = 1                         
 
-    def __init__(self, x): super().__int__(x)
+    def __init__(self, x): super().__init__(x)
   
     def __str__(self): return 'cos'
 

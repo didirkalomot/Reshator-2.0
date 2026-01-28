@@ -1,24 +1,22 @@
 import parse
 import nodes
 
-#Root = parse.prefix_to_tree('+(+(1, +(2, +(3, 4))), 5)')
-#print(Root)
+problem = parse.infix_to_tree('(1 + 34) * ~(sin(x) ^ 2 + cos(x) ^ 2)')
 
-'''
 while True:
-    index = input(f'{Root}\n')
+    problem.print_expression()
+    index = input()
     if index == '': break
-    elem = Root.nodes[int(index)]
+    elem = problem.nodes[int(index)]
     print(type(elem).__name__)
     action_name = input(f'{elem.actions}\n') 
     if action_name == '': break
     elem.do_action(action_name)
-'''
-s = '2 + 34 - 43 * (~(34 * ln(34)))'
 
-problem = parse.infix_to_tree(s)
 
-problem.print_expression()
+
+
+
 
 
 
