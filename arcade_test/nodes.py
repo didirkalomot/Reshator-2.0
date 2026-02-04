@@ -1,7 +1,7 @@
-from __future__ import annotations
-from functools import cached_property
-from copy import deepcopy
-import math
+from __future__ import annotations # это чтобы код видел типы до их объявления
+from functools import cached_property # это чтобы первый раз результат свойтсва записался и не срабатывала функция каждый раз
+from copy import deepcopy # для глубокого копирования
+import math # функции: sin, cos, log, ...
 
 def action(name):
     def decorator(func):
@@ -307,7 +307,7 @@ class Infix:
 
     def needs_parentheses(self, child: Node, is_left: bool) -> bool:
         if not isinstance(child, Operator): return False
-        if child.priority <= self.priority: return True
+        if child.priority >= self.priority: return True
         #if child.priority == self.priority:
             #if child.__class__ != self.__class__: return True
             #return self.associativity_left != is_left
