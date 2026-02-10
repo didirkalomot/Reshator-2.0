@@ -38,16 +38,16 @@ class Node:
     def __str__(self) -> str: return 'node'
 
     def print_expression(self):
-        result = []
+        result = ''
         node = self[0]
         symbol = str(node)
         result.append(symbol)
         for node in self[1:]:
             prev_symbol = symbol
             symbol = str(node)
-            if not (symbol == ')' or prev_symbol == '('): result.append(' ')
-            result.append(symbol)
-        print(''.join(result)) 
+            if not (symbol == ')' or prev_symbol == '('): result += ' '
+            result += symbol
+        print(result) 
     
     def print_tree(self): print(f'[{self}]')
 
