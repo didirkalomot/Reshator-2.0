@@ -2,10 +2,12 @@ from __future__ import annotations # это чтобы код видел тип�
 from functools import cached_property # это чтобы первый раз результат свойтсва записался и не срабатывала функция каждый раз
 from copy import deepcopy # для глубокого копирования
 import math # функции: sin, cos, log, ...
+import gc
 
-def action(name):
+def action(name, condition = None):
     def decorator(func):
         func.action_name = name
+        func.condition = condition
         return func
     return decorator
 
@@ -13,13 +15,21 @@ class Node:
     ACTIONS = {}
 
     @property
-    def actions(self) -> tuple: return tuple(self.__class__.ACTIONS.keys())
+    def actions(self) -> tuple:
+        available_actions = []
+        for name, func in self.__class__.ACTIONS.items():
+            if func.condition is None or func.condition(self):
+                available_actions.append(name)
+        return tuple(available_actions)
 
-    def do_action(self, name_action: str, *args): self.__class__.ACTIONS[name_action](self, *args)
+    def do_action(self, name_action: str) -> Node: 
+        func = self.__class__.ACTIONS[name_action]
+        if func.condition is None or func.condition(self): return func(self)
+        else: return self
 
     __slots__ = ['parent']
 
-    def __init__(self): self.parent = None
+    def __init__(self): self.parent: Operator | None = None
 
     def __iter__(self): raise NotImplementedError()
 
@@ -41,7 +51,7 @@ class Node:
         result = ''
         node = self[0]
         symbol = str(node)
-        result.append(symbol)
+        result += symbol
         for node in self[1:]:
             prev_symbol = symbol
             symbol = str(node)
@@ -61,19 +71,25 @@ class Node:
 
     def _equals(self, other): raise NotImplementedError()
     
-    def replace(self, new: Node):
-        if self.parent is not None:
-            for i, oper in enumerate(self.parent.operands):
-                if oper is self: 
+    def replace(self, new: Node) -> Node:
+        if self.parent != None:
+            for i, operand in enumerate(self.parent.operands):
+                if operand is self:
                     self.parent.operands[i] = new
                     new.parent = self.parent
-        
-
+                    self.parent = None
+        else:
+            for ref in gc.get_referrers(self):
+                if isinstance(ref, dict):
+                    for key, val in list(ref.items()):
+                        if val is self:
+                            ref[key] = new
+            
     @action('представить как противоположный')
-    def as_neg(self): self.replace(UnaryMinus(UnaryMinus(deepcopy(self))))
+    def as_neg(self) -> Node: self.replace(UnaryMinus(UnaryMinus(deepcopy(self))))
 
     @action('представить как дробь')
-    def as_fraction(self): self.replace(Div(deepcopy(self), Number(1)))
+    def as_fraction(self) -> Node: self.replace(Div(deepcopy(self), Number(1)))
 
 #####################################################################################
 
@@ -274,9 +290,8 @@ class Operator(Node):
     def result(self) -> Value: raise NotImplementedError()
 
     @action('выполнить')
-    def work(self):
-        if (result := self.result()) is not NotImplemented:
-             self.replace(result)
+    def work(self): 
+        if (result := self.result()) is not NotImplemented: self.replace(result) 
 
     def solve(self) -> Node:
         for i, operand in enumerate(self.operands):
@@ -354,10 +369,12 @@ class Associative:
                 for op in n.operands: collect(op)
             else: operands.append(n)
         collect(self)
+        print(f"to_list: {self} -> {operands}")
         return operands
     
     @classmethod
     def from_list(cls: Infix, operands) -> Node | None:
+        print(f"from_list: {operands}")
         if not operands: return None
         if len(operands) == 1: return operands[0]
         if cls.ASSOCIATIVITY_LEFT:
@@ -367,6 +384,7 @@ class Associative:
             result = operands[-1]
             for i in range(len(operands)-2, -1, -1):
                 result = cls(operands[i], result)
+        print(f"from_list result: {result}")
         return result
     
     def _equals(self, other) -> bool:
@@ -391,61 +409,12 @@ class Commutative:
 class Distributive:
     distributive_over: tuple[type[Associative], ...]
 
-    @action('внести в скобку')
-    @classmethod
-    def factor_in(cls, node: Node):
-        parent = node.parent
-        left, right = parent.operands
-        other = left if node is right else right
-        sum_class = other.__class__
-        if not cls.is_dist_over(sum_class): return
+    def is_dist_over(self, node_cls) -> bool: return self.__class__.is_dist_over(node_cls)
 
-        create_node = (lambda operand: cls(deepcopy(node), operand)) \
-        if node is left else (lambda operand: cls(operand, deepcopy(node)))
-        
-        nodes_list = other.to_list()
-        for i, operand in enumerate(nodes_list):
-            nodes_list[i] = create_node(operand)
-        new_sum = sum_class.from_list(nodes_list)
-        parent.replace(new_sum)
-
-    @action('вынести за скобку')
     @classmethod
-    def factor_out(cls, *args: Node):
-        max_parent = cls.get_max_sum(args[0].parent)
-        sum_class = max_parent.__class__
-        if not cls.is_dist_over(sum_class):
-            raise ValueError(f'{cls.__name__} не дистрибутивен над {sum_class.__name__}')
-        if any(arg.parent.__class__ != cls for arg in args):
-            raise ValueError('Разные операторы у аргументов')
-        if any(arg != args[0] for arg in args[1:]):
-            raise ValueError('Аргументы не равны')
-        nodes_list = max_parent.to_list()
-        all_children = [child for op in nodes_list if isinstance(op, Operator) 
-                       for child in op.operands]
-        if any(arg not in all_children for arg in args):
-            raise ValueError('Аргументы из разных сумм')
-        
-        touch_nodes = [
-            op for op in nodes_list 
-            if isinstance(op, Operator) and any(op.is_child(arg) 
-            for arg in args)]
-        other_nodes = [n for n in nodes_list if n not in touch_nodes]
-        
-        coefficients = []
-        for arg in args:
-            parent = arg.parent
-            coefficients.append(
-                parent.operands[1] 
-                if parent.operands[0] == arg 
-                else parent.operands[0])
-            
-        sum_of_coefs = sum_class.from_list(coefficients)
-        factored_part = cls(sum_of_coefs, args[0])
-        new_expression = (sum_class.from_list(other_nodes + [factored_part])
-                         if other_nodes else factored_part)
-        
-        max_parent.replace(new_expression)
+    def is_dist_over(cls : type, node_cls: type | Node) -> bool: 
+        if node_cls is type: return node_cls in cls.distributive_over
+        else: return node_cls.__class__ in cls.distributive_over
 
     @classmethod
     def get_max_sum(cls, operator: Operator) -> Operator:
@@ -454,10 +423,34 @@ class Distributive:
             operator, parent = parent, parent.parent
         return operator
     
-    @classmethod
-    def is_dist_over(cls, node_cls: type) -> bool:
-        return node_cls in cls.distributive_over
-        
+    def both_operands_is_sum(self) -> bool:  return self.is_dist_over(self.one) and self.is_dist_over(self.two)
+    @action('раскрыть скобку слева', both_operands_is_sum)
+    def factor_in_left(self):
+        print(f"factor_in_left: self.one = {self.one}")
+        print(f"factor_in_left: self.two = {self.two}")
+        sum_cls = self.one.__class__
+        mul_cls = self.__class__
+        nodes_list = self.one.to_list()
+        for i, operand in enumerate(nodes_list): 
+            nodes_list[i] = mul_cls(operand, deepcopy(self.two))
+        new_sum = sum_cls.from_list(nodes_list)
+        self.replace(new_sum)
+
+    @action('раскрыть скобку справа', both_operands_is_sum)
+    def factor_in_right(self) -> Node:
+        sum_cls = self.two.__class__
+        mul_cls = self.__class__
+        nodes_list = self.two.to_list()
+        for i, operand in enumerate(nodes_list): nodes_list[i] = mul_cls(deepcopy(self.one), operand)
+        new_sum = sum_cls.from_list(nodes_list)
+        self.replace(new_sum)
+
+    def only_one_operand_is_sum(self) -> bool: return self.is_dist_over(self.one) != self.is_dist_over(self.two)
+    @action('раскрыть скобку', only_one_operand_is_sum)
+    def factor_in(self) -> Node:
+        if self.is_dist_over(self.one): self.factor_in_left()
+        if self.is_dist_over(self.two): self.factor_in_right()
+       
 class AssociativeCommutative(Associative, Commutative):
     @action('коммутативность')
     def commutative(self):
@@ -476,6 +469,7 @@ class AssociativeCommutative(Associative, Commutative):
         return sorted(self_flat, key=hash) == sorted(other_flat, key=hash)
 
 class AssociativeDistributive(Associative, Distributive):
+    """
     @action('внести в скобку')
     @classmethod
     def factor_in(cls, node: Node, direction_right: bool = None):
@@ -506,7 +500,7 @@ class AssociativeDistributive(Associative, Distributive):
         while isinstance(parent, cls):
             operator, parent = parent, parent.parent
         return operator
-    
+    """
 #####################################################################################
 
 class Plus(AssociativeCommutative, Infix, Operator):         
@@ -537,12 +531,9 @@ class BinaryMinus(Infix, Operator):
 
     @action('представить как сумму')
     def as_plus(self):
-        if isinstance(self.two, Number): 
-            self.replace(Plus(self.one, -self.two))  
-        elif isinstance(self.two, UnaryMinus): 
-            self.replace(Plus(self.one, self.two.one))  
-        else:
-            self.replace(Plus(self.one, UnaryMinus(self.two)))
+        if isinstance(self.two, Number): self.replace(Plus(self.one, -self.two))  
+        elif isinstance(self.two, UnaryMinus): self.replace(Plus(self.one, self.two.one))  
+        else: self.replace(Plus(self.one, UnaryMinus(self.two)))
         
 class Mult(AssociativeCommutative, AssociativeDistributive, Infix, Operator):
     distributive_over = (Plus, BinaryMinus)

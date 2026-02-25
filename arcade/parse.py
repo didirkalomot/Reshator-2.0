@@ -135,8 +135,6 @@ def infix_to_prefix(string: str) -> str:
     if not string: return None
     return recursive_infix_to_prefix(string.replace(' ', ''))
 
-def infix_to_tree(string: str) -> nodes.Node: return prefix_to_tree(infix_to_prefix(string))
-
 def prefix_to_tree(string: str) -> nodes.Node:
     string = string.replace(' ', '')
     stack = []
@@ -169,3 +167,5 @@ def prefix_to_tree(string: str) -> nodes.Node:
             else: raise ValueError(f'неизвестный токен: {token}')
     if len(stack) != 1: raise ValueError(f'недопустимое выражение')
     return stack[0]
+
+def infix_to_tree(string: str) -> nodes.Node: return prefix_to_tree(infix_to_prefix(string))
