@@ -1,8 +1,11 @@
-import parse
+from parse import infix_to_tree
 import nodes
 
-root = parse.infix_to_tree('(a + b) * (2 + 4)')
+# Этот модуь нужен для теста консольной части
 
+root1 = infix_to_tree('(a + b) * 2')
+root2 = infix_to_tree('')
+"""
 while True:
     root.print_expression()
     index = input()
@@ -12,6 +15,7 @@ while True:
     action_name = input(f'{elem.actions}\n') 
     if action_name == '': break
     elem.do_action(action_name)
+"""
 
 
 
