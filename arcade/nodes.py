@@ -11,6 +11,8 @@ def action(name, condition = None):
         return func
     return decorator
 
+######################################## Основной Класс Node ########################################
+
 class Node:
     ACTIONS = {}
 
@@ -44,7 +46,7 @@ class Node:
     @property
     def operators(self) -> list[Operator]: 
         return [operator for operator in self if isinstance(operator, Operator)]
-
+    
     def __str__(self) -> str: return 'node'
 
     def print_expression(self):
@@ -69,7 +71,7 @@ class Node:
 
     def __eq__(self, other): return type(self) == type(other) and self._equals(other)
 
-    def _equals(self, other): raise NotImplementedError()
+    def _equals(self, other: Node): raise NotImplementedError()
 
     def replace(self, new):
         if self.parent is not None:
@@ -96,6 +98,24 @@ class Node:
                     if val is self:
                         setattr(ref, attr, new)
         new.parent = None
+
+    @staticmethod
+    def find_common_parent(*nodes: Node) -> Node | None:
+        if not nodes: return None
+        if len(nodes) == 1: return nodes[0]
+        paths = []
+        for node in nodes:
+            path = []
+            while node:
+                path.append(node)
+                node = node.parent
+            paths.append(path)
+        parent = None
+        for i in range(-1, -min(len(path) for path in paths) - 1, -1):
+            current = paths[0][i]
+            if all(path[i] is current for path in paths): parent = current
+            else: break
+        return parent
             
     def not_self_already_neg(self): return not (isinstance(self, UnaryMinus) or isinstance(self.parent, UnaryMinus))        
     @action('представить как противоположный', not_self_already_neg)
@@ -104,7 +124,7 @@ class Node:
     @action('представить как дробь', lambda self: not isinstance(self, Div))
     def as_fraction(self) -> Node: self.replace(Div(deepcopy(self), Number(1)))
 
-#####################################################################################
+######################################## Основное Разделение: Value и Operator ########################################
 
 class Value(Node):
     __slots__ = ['value']
@@ -117,7 +137,7 @@ class Value(Node):
 
     def __iter__(self): yield self
 
-    def _equals(self, other): return self.value == other.value
+    def _equals(self, other: Value): return self.value == other.value
     
     def __hash__(self): return hash((self.__class__, self.value))
     
@@ -242,25 +262,9 @@ class Operator(Node):
         else: return self.__class__.Arity
 
     @cached_property
-    def priority(self) -> int: return self.__class__.PRIORITY
-     
-    @property
-    def one(self) -> Node: return self.operands[0]
-
-    @one.setter  
-    def one(self, value: Node):
-        self.operands[0] = value
-        value.parent = self
+    def priority(self) -> int: return self.__class__.PRIORITY   
         
-    @property
-    def two(self) -> Node: return self.operands[1]
-
-    @two.setter
-    def two(self, value: Node):
-        self.operands[1] = value
-        value.parent = self    
-        
-    def _equals(self, other):
+    def _equals(self, other: Operator):
         if len(self.operands) != len(other.operands): return False
         return all(a == b for a, b in zip(self.operands, other.operands))
 
@@ -297,15 +301,24 @@ class Operator(Node):
     def work(self): 
         if (result := self.result()) is not NotImplemented: self.replace(result) 
 
-def solve(self) -> None:
-    for i, operand in enumerate(self.operands):
-        if isinstance(operand, Operator):
-            operand.solve()
-    self.work()
-#######################################
+    def solve(self) -> None:
+        for i, operand in enumerate(self.operands):
+            if isinstance(operand, Operator):
+                operand.solve()
+        self.work()
+
+######################################## Миксины ########################################
 
 class Prefix:
     ARITY = 1
+
+    @property
+    def one(self) -> Node: return self.operands[0]
+
+    @one.setter  
+    def one(self, value: Node):
+        self.operands[0] = value
+        value.parent = self
 
     def __iter__(self):
         yield self
@@ -316,6 +329,22 @@ class Prefix:
 class Infix:
     ARITY = 2
     ASSOCIATIVITY_LEFT = True
+
+    @property
+    def one(self) -> Node: return self.operands[0]
+
+    @one.setter  
+    def one(self, value: Node):
+        self.operands[0] = value
+        value.parent = self
+
+    @property
+    def two(self) -> Node: return self.operands[1]
+
+    @two.setter
+    def two(self, value: Node):
+        self.operands[1] = value
+        value.parent = self 
 
     @cached_property
     def associativity_left(self) -> bool: return self.__class__.ASSOCIATIVITY_LEFT
@@ -341,15 +370,23 @@ class Infix:
 class Postfix:
     ARITY = 1
 
+    @property
+    def one(self) -> Node: return self.operands[0]
+
+    @one.setter  
+    def one(self, value: Node):
+        self.operands[0] = value
+        value.parent = self
+
     def __iter__(self):
         yield '('
         for op in self.operands: yield from op
         yield ')'
         yield self
         
-class Associative:
+class Associative: # Infix
     def both_operands_is_self_class(self): 
-        return isinstance(self.one, self.__class__) and isinstance(self.two, self.__class__)
+        return all(isinstance(oper, self.__class__) for oper in self.operands)
     @action('ассоциативность влево', both_operands_is_self_class)
     def associative_left(self):
         """a ∘ (b ∘ c) → (a ∘ b) ∘ c"""
@@ -364,9 +401,9 @@ class Associative:
             self.two = self.__class__(self.one.two, self.two)
             self.one = self.one.one
 
-    def only_one_operand_is_self_class(self): 
+    def one_operand_is_self_class(self): 
         return isinstance(self.one, self.__class__) != isinstance(self.two, self.__class__)
-    @action('ассоциативность', only_one_operand_is_self_class)
+    @action('ассоциативность', one_operand_is_self_class)
     def associative(self):
         if isinstance(self.one, self.__class__):  self.associative_right()
         else: self.associative_left()
@@ -395,18 +432,15 @@ class Associative:
     
     def __hash__(self): return hash((self.__class__, *self.to_list()))
     
-    def _equals(self, other) -> bool:
-        self_list = self.to_list() 
-        other_list = other.to_list()
-        return self_list == other_list
+    def _equals(self, other: Associative) -> bool: return self.to_list() == other.to_list()
 
-class Commutative:
+class Commutative: # Infix
     def __hash__(self):
         return hash(( self.__class__, *sorted(
             str(op.value) if isinstance(op, Value) else op.__class__.__name__
             for op in self.operands)))
     
-    def _equals(self, other) -> bool:
+    def _equals(self, other: Commutative) -> bool:
         return sorted(self.operands, key=hash) == sorted(other.operands, key=hash)
 
     @action('коммутативность')
@@ -414,59 +448,6 @@ class Commutative:
         """a ∘ b → b ∘ a - поменять операнды местами"""
         self.one, self.two = self.two, self.one
 
-class Distributive:
-    distributive_over: tuple[type[Associative], ...]
-
-    def is_dist_over(self, node_cls) -> bool: return self.__class__.is_dist_over(node_cls)
-
-    @classmethod
-    def is_dist_over(cls, node_cls: type | Node) -> bool: 
-        if node_cls is type: return node_cls in cls.distributive_over
-        else: return node_cls.__class__ in cls.distributive_over
-
-    @classmethod
-    def get_max_sum(cls, operator: Operator) -> Operator:
-        parent = operator.parent
-        while cls.is_dist_over(parent.__class__):
-            operator, parent = parent, parent.parent
-        return operator
-    
-    def both_operands_is_sum(self) -> bool:  return self.is_dist_over(self.one) and self.is_dist_over(self.two)
-    @action('раскрыть скобку слева', both_operands_is_sum)
-    def factor_in_left(self):
-        mul_cls = self.__class__
-        for i, operand in enumerate(self.one.operands): 
-            self.one.operands[i] = mul_cls(operand, deepcopy(self.two))
-        self.replace(self.one)
-
-    @action('раскрыть скобку справа', both_operands_is_sum)
-    def factor_in_right(self) -> Node:
-        mul_cls = self.__class__
-        for i, operand in enumerate(self.two.operands): 
-            self.two.operands[i] = mul_cls(deepcopy(self.one), operand)
-        self.replace(self.two)
-
-    def only_one_operand_is_sum(self) -> bool: return self.is_dist_over(self.one) != self.is_dist_over(self.two)
-    @action('раскрыть скобку', only_one_operand_is_sum)
-    def factor_in(self) -> Node:
-        if self.is_dist_over(self.one): self.factor_in_left()
-        else: self.factor_in_right()
-    
-    @classmethod
-    def factor_out(cls, sum: Associative):
-        if not cls.is_dist_over(sum): return
-        if not all(isinstance(operand, cls) for operand in sum.operands): return
-        
-
-
-
-
-
-
-
-
-
-    
 class AssociativeCommutative(Associative, Commutative):
     def _key(self):
         return sorted(
@@ -475,44 +456,48 @@ class AssociativeCommutative(Associative, Commutative):
 
     def __hash__(self): return hash((self.__class__, *self._key()))
     
-    def _equals(self, other): return self._key() == other._key()
+    def _equals(self, other: AssociativeCommutative): return self._key() == other._key()
 
-class AssociativeDistributive(Associative, Distributive):
-    """
-    @action('внести в скобку')
-    @classmethod
-    def factor_in(cls, node: Node, direction_right: bool = None):
-        if direction_right is None:
-            direction_right = cls.find_direction(node)
-            if direction_right is None:
-                return
-        parent = node.parent
-        is_left = node is parent.operands[0]
-        if is_left == direction_right:
-            super().factor_in(node)
-        elif isinstance(parent.parent, cls):
-            parent.parent.associative()
-            super().factor_in(node)
+class Factorable:
+    def both_operands_is_muls(self) -> bool: return all(isinstance(oper, Mult) for oper in self.operands)
 
-    @classmethod
-    def find_direction(cls, node: Node) -> bool | None:
-        max_mult = cls.get_max_mult(node.parent)
-        nodes_list = max_mult.to_list()
-        node_index = nodes_list.index(node)
-        left_is_sum = (node_index > 0 and nodes_list[node_index-1].__class__ in cls.distributive_over)
-        right_is_sum = (node_index < len(nodes_list)-1 and nodes_list[node_index+1].__class__ in cls.distributive_over)
-        return None if left_is_sum == right_is_sum else right_is_sum
+    def get_common_factor(self) -> Node | None:
+        if not self.both_operands_is_muls(): return None
+        common = set(self.one.operands) & set(self.two.operands)
+        return common.pop() if common else None
+
+    def has_common_factor(self) -> bool: return bool(self.get_common_factor())
+        
+    @action('вынести общий множитель', has_common_factor)
+    def factor_out(self):
+        if not self.both_operands_is_muls(): return
+        common = self.get_common_factor()
+        if common is None: return
+        left_rest, right_rest = (mult.one if mult.one != common else mult.two for mult in self.operands)
+        new_sum = self.__class__(left_rest, right_rest)
+        new_mult = Mult(new_sum, common)
+        self.replace(new_mult)
+
+    def both_operands_is_div(self) -> bool: return all(isinstance(oper, Div) for oper in self.operands)
+
+    def get_common_denominator(self) -> Node | None:
+        if not self.both_operands_is_div(): return
+        return self.one.one if self.one.two == self.two.two else None
     
-    @classmethod
-    def get_max_mult(cls, operator: Operator) -> Operator:
-        parent = operator.parent
-        while isinstance(parent, cls):
-            operator, parent = parent, parent.parent
-        return operator
-    """
+    def has_common_denominator(self) -> bool: return bool(self.get_common_denominator())
+
+    @action('вынести общий знаменатель', has_common_denominator)
+    def denominator_out(self):
+        if not self.both_operands_is_div(): return
+        common = self.get_common_denominator()
+        if common is None: return
+        new_sum = self.__class__(self.one.one, self.two.one)
+        new_div = Div(new_sum, common)
+        self.replace(new_div)
+
 #####################################################################################
 
-class Plus(AssociativeCommutative, Infix, Operator):         
+class Plus(Factorable, AssociativeCommutative, Infix, Operator):         
     PRIORITY = 5
 
     def __init__(self, addend1, addend2): super().__init__(addend1, addend2)
@@ -524,8 +509,8 @@ class Plus(AssociativeCommutative, Infix, Operator):
         if self.two == Number.ZERO: return self.one
         try: return self.one + self.two
         except TypeError: return NotImplemented
-          
-class BinaryMinus(Infix, Operator):           
+
+class BinaryMinus(Factorable, Infix, Operator):           
     PRIORITY = 5
 
     def __init__(self, minuend, subtrahend): super().__init__(minuend, subtrahend)
@@ -543,15 +528,36 @@ class BinaryMinus(Infix, Operator):
         if isinstance(self.two, Number): self.replace(Plus(self.one, -self.two))  
         elif isinstance(self.two, UnaryMinus): self.replace(Plus(self.one, self.two.one))  
         else: self.replace(Plus(self.one, UnaryMinus(self.two)))
-        
-class Mult(AssociativeCommutative, AssociativeDistributive, Infix, Operator):
-    distributive_over = (Plus, BinaryMinus)
-                                   
+                  
+class Mult(AssociativeCommutative, Infix, Operator):
     PRIORITY = 4    
 
     def __init__(self, factor1, factor2): super().__init__(factor1, factor2)
    
     def __str__(self): return '*'
+
+    def both_operands_is_factorable(self) -> bool: 
+        return all(isinstance(oper, Factorable) for oper in self.operands)
+    @action('раскрыть скобку слева', both_operands_is_factorable)
+    def factor_in_left(self):
+        if not isinstance(self.one, Plus): return
+        for i, operand in enumerate(self.one.operands): 
+            self.one.operands[i] = Mult(operand, deepcopy(self.two))
+        self.replace(self.one)
+
+    @action('раскрыть скобку справа', both_operands_is_factorable)
+    def factor_in_right(self) -> Node:
+        if not isinstance(self.two, Plus): return
+        for i, operand in enumerate(self.two.operands): 
+            self.two.operands[i] = Mult(deepcopy(self.one), operand)
+        self.replace(self.two)
+
+    def one_operand_is_factorable(self) -> bool: 
+        return isinstance(self.one, Factorable) != isinstance(self.two, Factorable)
+    @action('раскрыть скобку', one_operand_is_factorable)
+    def factor_in(self) -> Node:
+        if isinstance(self.one, Factorable): self.factor_in_left()
+        else: self.factor_in_right()   
 
     def result(self) -> Node:
         if self.one == Number.ONE: return self.two
@@ -567,6 +573,13 @@ class Div(Infix, Operator):
     def __init__(self, dividend, divisor): super().__init__(dividend, divisor)
  
     def __str__(self): return '/'
+
+    @action('раскрыть числитель', lambda self: isinstance(self.one, Factorable))
+    def expend_numerator(self):
+        if not isinstance(self.one, Plus): return
+        for i, operand in enumerate(self.one.operands): 
+            self.one.operands[i] = Div(operand, deepcopy(self.two))
+        self.replace(self.one)
 
     def result(self) -> Node:
         if self.one == Number.ZERO: return Number(0)
