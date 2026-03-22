@@ -3,6 +3,7 @@ from functools import cached_property # это чтобы первый раз р
 from copy import deepcopy # для глубокого копирования
 import math # функции: sin, cos, log, ...
 import gc
+import arcade
 
 def action(name, condition = None):
     def decorator(func):
@@ -62,6 +63,8 @@ class Node:
         print(result) 
     
     def print_tree(self, prefix): print(f'{prefix}[{self}]')
+
+    def img(self) -> arcade.Sprite: raise NotADirectoryError()
 
     def __deepcopy__(self, memo=None):
         cls = self.__class__
