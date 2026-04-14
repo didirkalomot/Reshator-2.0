@@ -2,8 +2,8 @@ from __future__ import annotations # это чтобы код видел тип�
 from functools import cached_property # это чтобы первый раз результат свойтсва записался и не срабатывала функция каждый раз
 from copy import deepcopy # для глубокого копирования
 import math # функции: sin, cos, log, ...
-import gc
-import arcade
+import gc # для метода Node.replace
+from mechanics import tokens
 
 def action(name, condition = None):
     def decorator(func):
@@ -14,11 +14,11 @@ def action(name, condition = None):
 
 ######################################## Основной Класс Node ########################################
 
-class Node:
-    ACTIONS = {}
+class Node(tokens.VisibleToken):
+    ACTIONS : dict[str, callable] = {} 
 
     @property
-    def actions(self) -> tuple:
+    def actions(self) -> dict[str, callable]:
         available_actions = []
         for name, func in self.__class__.ACTIONS.items():
             if func.condition is None or func.condition(self):
@@ -39,11 +39,17 @@ class Node:
     def __getitem__(self, key) -> Node | str: return list(iter(self))[key]
 
     @property
-    def nodes(self) -> list[Node]: return [node for node in self if type(node) is not str]
-
+    def visibles(self) -> list[tokens.VisibleToken]:
+        return [item for item in self if isinstance(item, tokens.VisibleToken)]
+    
     @property
-    def values(self) -> list[Value]: return [value for value in self if isinstance(value, Value)]
-
+    def nodes(self) -> list[Node]: 
+        return [node for node in self if type(node) is not isinstance(node, Node)]
+    
+    @property
+    def values(self) -> list[Value]: 
+        return [value for value in self if isinstance(value, Value)]
+    
     @property
     def operators(self) -> list[Operator]: 
         return [operator for operator in self if isinstance(operator, Operator)]
@@ -51,20 +57,15 @@ class Node:
     def __str__(self) -> str: return 'node'
 
     def print_expression(self):
-        result = ''
-        node = self[0]
-        symbol = str(node)
-        result += symbol
-        for node in self[1:]:
-            prev_symbol = symbol
-            symbol = str(node)
-            if not (symbol == ')' or prev_symbol == '('): result += ' '
-            result += symbol
-        print(result) 
+        items = [str(item) for item in self.visibles]
+        if not items:
+            return
+        result = items[0]
+        for s in items[1:]:
+            result += (' ' if not (s == ')' or result[-1] == '(') else '') + s
+        print(result)
     
     def print_tree(self, prefix): print(f'{prefix}[{self}]')
-
-    def img(self) -> arcade.Sprite: raise NotADirectoryError()
 
     def __deepcopy__(self, memo=None):
         cls = self.__class__
@@ -245,7 +246,7 @@ class Letter(Value):
         if self == other: return Number(1)
         return NotImplemented
 
-#######################################
+########################################
 
 class Operator(Node):
     ARITY = 2
@@ -282,8 +283,8 @@ class Operator(Node):
         for op in result.operands:
             op.parent = result
         return result
-    
-    def __len__(self): return sum(1 for _ in iter(self))    
+
+    def __str__(self): return 'operator'
 
     def print_tree(self, prefix=''):
         print(f'{prefix}[{self}]')
@@ -324,10 +325,11 @@ class Prefix:
         value.parent = self
 
     def __iter__(self):
+        left_bracket, right_bracket = tokens.function_brackets.create_pair()
         yield self
-        yield '('
+        yield left_bracket
         for op in self.operands: yield from op
-        yield ')'
+        yield right_bracket
 
 class Infix:
     ARITY = 2
@@ -362,13 +364,17 @@ class Infix:
 
     def __iter__(self):
         left, right = self.operands
-        if self.needs_parentheses(left, True):
-            yield '('; yield from left; yield ')'
-        else: yield from left
+        def walk(operand, need_parens):
+            if need_parens:
+                left_bracket, right_bracket = tokens.brackets.create_pair()
+                yield left_bracket
+                yield from operand
+                yield right_bracket
+            else: yield from operand
+
+        yield from walk(left, self.needs_parentheses(left, True))
         yield self
-        if self.needs_parentheses(right, False):
-            yield '('; yield from right; yield ')'
-        else: yield from right
+        yield from walk(right, self.needs_parentheses(right, False))
 
 class Postfix:
     ARITY = 1
@@ -382,9 +388,10 @@ class Postfix:
         value.parent = self
 
     def __iter__(self):
-        yield '('
+        left_bracket, right_bracket = tokens.function_brackets.create_pair()
+        yield left_bracket
         for op in self.operands: yield from op
-        yield ')'
+        yield right_bracket
         yield self
         
 class Associative: # Infix
@@ -498,7 +505,7 @@ class Factorable:
         new_div = Div(new_sum, common)
         self.replace(new_div)
 
-#####################################################################################
+######################################## Итоговые Классы ########################################
 
 class Plus(Factorable, AssociativeCommutative, Infix, Operator):         
     PRIORITY = 5
@@ -577,6 +584,17 @@ class Div(Infix, Operator):
  
     def __str__(self): return '/'
 
+    def __iter__(self):
+        numerator_begin, numerator_end = tokens.layout_bounds.create_pair()
+        denominator_begin, denominator_end = tokens.layout_bounds.create_pair() 
+        yield numerator_begin
+        yield from self.one
+        yield numerator_end
+        yield self
+        yield denominator_begin
+        yield from self.two
+        yield denominator_end
+
     @action('раскрыть числитель', lambda self: isinstance(self.one, Factorable))
     def expend_numerator(self):
         if not isinstance(self.one, Plus): return
@@ -597,6 +615,14 @@ class Pow(Infix, Operator):
     def __init__(self, base, degree): super().__init__(base, degree)
    
     def __str__(self): return '^'
+
+    def __iter__(self):
+        exponent_begin, exponent_end = tokens.layout_bounds.create_pair()
+        yield from self.one
+        yield self
+        yield exponent_begin
+        yield from self.two
+        yield exponent_end
 
     def result(self) -> Node:
         if self.two == Number.ONE: return self.one
@@ -679,7 +705,7 @@ class Ln(Prefix, Operator):
         try: return Number(math.log(self.one.value, math.e))
         except TypeError: return NotImplemented
   
-#####################################################################################        
+######################################## Вспомогательная Часть ########################################        
 
 def register_actions(cls=Node):
     for sub in cls.__subclasses__():

@@ -2,7 +2,7 @@
 которые описывают режим игры, для их общей логики
 сейчас это кнопка для возврата в меню"""
 
-from views import arcade_import as arcade
+from graphics import arcade_import as arcade
 
 class BaseMode(arcade.UIView):
     def __init__(self):
@@ -16,7 +16,7 @@ class BaseMode(arcade.UIView):
                 "normal": {"bg_color": arcade.color.YELLOW_ORANGE},
                 "hover": {"bg_color": arcade.color.ORANGE},
                 "press": {"bg_color": arcade.color.DARK_ORANGE}})
-        from views.menu import Menu
+        from graphics.views.menu import Menu
         @button.event("on_click")
         def on_click(event): self.window.show_view(Menu())
         anchor = self.ui.add(arcade.UIAnchorLayout())

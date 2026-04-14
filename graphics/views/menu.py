@@ -1,10 +1,10 @@
 """это главное меню, тут можно выйти из игры или выбрать режим игры"""
 
-from views import arcade_import as arcade
-from views import graphics
-from views.sandbox_mode import SandboxMode
-from views.mode2 import Mode2
-from views.base_mode import BaseMode
+from graphics import arcade_import as arcade
+from graphics import styles
+from graphics.views.sandbox_mode import SandboxMode
+from graphics.views.mode2 import Mode2
+from graphics.views.base_mode import BaseMode
 
 class Menu(arcade.UIView):
     # Список режимов: (View_класс, текст_на_кнопке)
@@ -18,7 +18,7 @@ class Menu(arcade.UIView):
     
     def __init__(self):
         super().__init__()
-        self.background_color = graphics.COLOR_BLACKBOARD
+        self.background_color = styles.COLOR_BLACKBOARD
         
         anchor = self.ui.add(arcade.UIAnchorLayout())
         
@@ -61,7 +61,7 @@ class Menu(arcade.UIView):
             text=text,
             width=300,
             height=80,
-            style=graphics.BUTTON_CHOOSE_MODE,
+            style=styles.BUTTON_CHOOSE_MODE,
             font_size=18)
         @btn.event("on_click")
         def on_click(event, vc=view_class): self.window.show_view(vc())

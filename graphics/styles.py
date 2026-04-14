@@ -1,4 +1,5 @@
-from views import arcade_import as arcade
+from graphics import arcade_import as arcade
+from arcade.color import *
 
 COLOR_BLACKBOARD = arcade.Color(25, 112, 39)
 COLOR_MY_VIOLET = arcade.Color(80, 25, 112)

@@ -1,7 +1,6 @@
 """этот модуль - входная точка в программу"""
-
-import views.arcade_import as arcade
-from views.menu import Menu
+import graphics.arcade_import as arcade
+from graphics.views.menu import Menu
 
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 800

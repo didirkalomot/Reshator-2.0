@@ -1,5 +1,5 @@
 import re
-import nodes
+from mechanics import nodes
 
 operations : dict[str : type[nodes.Operator]] = {
     '^' : nodes.Pow,
