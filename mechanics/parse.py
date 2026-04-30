@@ -1,6 +1,7 @@
 import re
 from mechanics import nodes
 
+
 operations : dict[str : type[nodes.Operator]] = {
     '^' : nodes.Pow,
     '~' : nodes.UnaryMinus,
@@ -12,7 +13,8 @@ operations : dict[str : type[nodes.Operator]] = {
     'cos' : nodes.Cos,
     'log' : nodes.Log, 
     'lg' : nodes.Lg,
-    'ln' : nodes.Ln
+    'ln' : nodes.Ln,
+    '=' : nodes.Equal
 }
 
 operations_sorted = sorted(operations.keys(), key=len, reverse=True)

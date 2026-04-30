@@ -2,21 +2,15 @@
 которые описывают режим игры, для их общей логики
 сейчас это кнопка для возврата в меню"""
 
-from graphics import arcade_import as arcade
+from game import arcade_import as arcade
+from game import graphics
 
 class BaseMode(arcade.UIView):
     def __init__(self):
         super().__init__()
-        print("----------------------------------")
-        self.background_color = arcade.color.DARK_SLATE_GRAY
-        button = arcade.UIFlatButton(
-            text="← Меню",
-            width=100,
-            style={
-                "normal": {"bg_color": arcade.color.YELLOW_ORANGE},
-                "hover": {"bg_color": arcade.color.ORANGE},
-                "press": {"bg_color": arcade.color.DARK_ORANGE}})
-        from graphics.views.menu import Menu
+        self.background_color = graphics.COLOR_BLACKBOARD
+        button = arcade.UIFlatButton(text="< Меню", width=100, style=graphics.BUTTON_GOTO_MENU_STYLE)
+        from game.views.menu import Menu
         @button.event("on_click")
         def on_click(event): self.window.show_view(Menu())
         anchor = self.ui.add(arcade.UIAnchorLayout())

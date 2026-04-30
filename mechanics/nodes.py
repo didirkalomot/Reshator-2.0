@@ -5,6 +5,7 @@ import math # функции: sin, cos, log, ...
 import gc # для метода Node.replace
 from mechanics import tokens
 
+
 def action(name, condition = None):
     def decorator(func):
         func.action_name = name
@@ -12,7 +13,7 @@ def action(name, condition = None):
         return func
     return decorator
 
-######################################## Основной Класс Node ########################################
+######################################## Основной Класс ########################################
 
 class Node(tokens.VisibleToken):
     ACTIONS : dict[str, callable] = {} 
@@ -44,7 +45,7 @@ class Node(tokens.VisibleToken):
     
     @property
     def nodes(self) -> list[Node]: 
-        return [node for node in self if type(node) is not isinstance(node, Node)]
+        return [node for node in self if isinstance(node, Node)]
     
     @property
     def values(self) -> list[Value]: 
@@ -128,7 +129,13 @@ class Node(tokens.VisibleToken):
     @action('представить как дробь', lambda self: not isinstance(self, Div))
     def as_fraction(self) -> Node: self.replace(Div(deepcopy(self), Number(1)))
 
-######################################## Основное Разделение: Value и Operator ########################################
+    def parent_is_factorable_and_grand_is_equal(self): 
+        parent = self.parent
+        return isinstance(parent, Factorable) and isinstance(parent.parent, Equal)
+    @action('перенести за равно', parent_is_factorable_and_grand_is_equal)
+    def transfer_via_equals(self): self.parent.parent.transfer(self)
+            
+######################################## Классы Для Значений ########################################
 
 class Value(Node):
     __slots__ = ['value']
@@ -246,7 +253,7 @@ class Letter(Value):
         if self == other: return Number(1)
         return NotImplemented
 
-########################################
+######################################## Класс Для Операторов ########################################
 
 class Operator(Node):
     ARITY = 2
@@ -299,7 +306,7 @@ class Operator(Node):
             any(isinstance(n, Operator) and n.is_descendant(node) 
                 for n in self.operands))
 
-    def result(self) -> Value: raise NotImplementedError()
+    def result(self) -> Value: return NotImplemented
 
     @action('выполнить', lambda self: self.result() is not NotImplemented)
     def work(self): 
@@ -311,7 +318,7 @@ class Operator(Node):
                 operand.solve()
         self.work()
 
-######################################## Миксины ########################################
+######################################## Миксины Для Операторов ########################################
 
 class Prefix:
     ARITY = 1
@@ -354,7 +361,7 @@ class Infix:
     @cached_property
     def associativity_left(self) -> bool: return self.__class__.ASSOCIATIVITY_LEFT
 
-    def needs_parentheses(self, child: Node, is_left: bool) -> bool:
+    def _needs_parentheses(self, child: Node, is_left: bool) -> bool:
         if not isinstance(child, Operator): return False
         if child.priority >= self.priority: return True
         #if child.priority == self.priority:
@@ -372,9 +379,13 @@ class Infix:
                 yield right_bracket
             else: yield from operand
 
-        yield from walk(left, self.needs_parentheses(left, True))
+        yield from walk(left, self._needs_parentheses(left, True))
         yield self
-        yield from walk(right, self.needs_parentheses(right, False))
+        yield from walk(right, self._needs_parentheses(right, False))
+
+    def other_operand(self, node: Node) -> Node:
+        if not self.is_child(node): raise NotImplementedError()
+        return self.two if node is self.one else self.one
 
 class Postfix:
     ARITY = 1
@@ -458,7 +469,7 @@ class Commutative: # Infix
         """a ∘ b → b ∘ a - поменять операнды местами"""
         self.one, self.two = self.two, self.one
 
-class AssociativeCommutative(Associative, Commutative):
+class AssociativeCommutative(Associative, Commutative):# Infix
     def _key(self):
         return sorted(
             str(op.value) if isinstance(op, Value) else op.__class__.__name__
@@ -468,7 +479,7 @@ class AssociativeCommutative(Associative, Commutative):
     
     def _equals(self, other: AssociativeCommutative): return self._key() == other._key()
 
-class Factorable:
+class Factorable:# Infix
     def both_operands_is_muls(self) -> bool: return all(isinstance(oper, Mult) for oper in self.operands)
 
     def get_common_factor(self) -> Node | None:
@@ -505,7 +516,27 @@ class Factorable:
         new_div = Div(new_sum, common)
         self.replace(new_div)
 
-######################################## Итоговые Классы ########################################
+######################################## Итоговые Классы Операторов ########################################
+
+class Equal(Commutative, Infix, Operator):
+    PRIORITY = 100
+    
+    def __init__(self, left_hand_side, right_hand_side): super().__init__(left_hand_side, right_hand_side)
+
+    def __str__(self): return "="
+
+    def transfer(self, node: Node):        
+        parent = node.parent
+        grand = parent.parent
+        if isinstance(parent, Factorable) and grand is self:            
+            if isinstance(parent, BinaryMinus): parent.as_plus()
+            other = parent.other_operand(node)
+            if grand.one is parent:
+                grand.one = other
+                grand.two = Plus(self.two, UnaryMinus(node))
+            else:
+                grand.two = other
+                grand.one = Plus(UnaryMinus(node), self.one)
 
 class Plus(Factorable, AssociativeCommutative, Infix, Operator):         
     PRIORITY = 5
