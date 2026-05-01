@@ -5,209 +5,63 @@ from game import graphics
 from mechanics import nodes, tokens, parse
 from copy import deepcopy
 
-import sys
-
-######################################## Главный Класс - Режим ########################################
+BUILD_FUNCTIONS = {}
 
 class SandboxMode(BaseMode):
     def __init__(self):
         super().__init__()
-        self.root = parse.infix_to_tree('1 + 2 * 3 + 4')
-        self.panels = []
-        
-        self.panels_layout = arcade.UIBoxLayout(vertical=True, space_between=20)
-        scroll = arcade.UIScrollArea(width=900, height=500)
-        scroll.add(self.panels_layout)
-        anchor = self.ui.add(arcade.UIAnchorLayout())
-        anchor.add(scroll, anchor_x="center", anchor_y="center", align_y=20)
-        
-        add_btn = arcade.UIFlatButton(text="+", width=50, height=50)
-        @add_btn.event("on_click")
-        def on_add(event): self.add_panel()
-        anchor.add(add_btn, anchor_x="right", anchor_y="bottom", align_x=-20, align_y=-20)
-        self.add_panel()
-    
-    def add_panel(self):
-        if self.panels: root = self.panels[0].root
-        else: root = deepcopy(self.root)
-        panel = ExpressionPanel(self, root)
-        self.panels.append(panel)
-        self.panels_layout.add(panel)
+        self.expression = ExpressionPanel(self.ui, parse.infix_to_tree('(1 + 2) * 3'))
+        anchor = arcade.UIAnchorLayout(width=self.width-100, height=self.height-100)
+        anchor.add(self.expression, anchor_x="center", anchor_y="center")
+        self.ui.add(anchor)
+        self.expression.build()
 
-######################################## Класс, Описывающий Один Пример ########################################
-
-class ExpressionPanel(arcade.UIWidget):
-    def __init__(self, sandbox: SandboxMode, root: nodes.Node):
-        super().__init__()
-        self.sandbox = sandbox
+class ExpressionPanel(arcade.UIBoxLayout):
+    def __init__(self, manager: arcade.UIManager, root: nodes.Node):
+        super().__init__(vertical=False, space_between=5)
+        self.manager = manager
         self.root = root
-        self.layout = None
-        self.build()
-    
+        
     def build(self):
-        if self.layout: 
-            self.remove(self.layout)
-            for child in self.layout.children[:]:
-                self.layout.remove(child)
-        self.layout = create_horizontal_layout(self, list(self.root))
-        self.add(self.layout)
-        self.width = self.layout.width
-        self.height = self.layout.height
+        self.clear()
+        for token in self.root:
+            if isinstance(token, tokens.VisibleToken):
+                if isinstance(token, tokens.Bracket):
+                    self.add(arcade.UIImage(texture=graphics.create_token_texture(token, graphics.YELLOW)))
+                elif isinstance(token, nodes.Node):
+                    self.add(NodeButton(self, token))
+        self.fit_content()
 
-######################################## Класс Для Одной Горизонтальной Группы ########################################
-
-class HorizontalLayout(arcade.UIBoxLayout):
-    def __init__(self, expression_panel: ExpressionPanel, scale_coeff: float = 1, space_between: int = 5):
-        super().__init__(vertical=False, space_between=space_between)
-        self.scale_coeff = scale_coeff
-        self.expression_panel = expression_panel
-
-    def scale(self, factor: float):
-        self.scale_coeff = self.scale_coeff * factor
-        self.space_between = int(self.space_between * factor)
-        for child in self.children: child.scale(factor)
-
-    def add(self, child, *args, **kwargs):
-        #if isinstance(child, arcade.UIWidget): child.scale(self.scale_coeff)
-        super().add(child, *args, **kwargs)
-
-######################################## Функция Генерации Горизонтальной Группы ########################################
-
-def create_horizontal_layout(expression_panel: ExpressionPanel, tokens_list: list[tokens.Token], scale_coeff: float = 1) -> HorizontalLayout:
-    panel = HorizontalLayout(expression_panel, scale_coeff)
-    index = 0
-    while index < len(tokens_list):
-        token = tokens_list[index]
-        if isinstance(token, tokens.VisibleToken):
-            if isinstance(token, nodes.Node):
-                if token not in build_functions: panel.add(NodeButton(expression_panel, token))
-                else: 
-                    index = build_functions[token.__class__](panel, tokens_list, index)
-                    continue
-            if isinstance(token, tokens.Bracket):
-                texture = graphics.create_token_texture(str(token), graphics.COLOR_MY_YELLOW)
-                widget = arcade.UIImage(texture=texture, width=texture.width, height=texture.height)
-                panel.add(widget)
-                index += 1
-                continue
-        if isinstance(token, tokens.LayoutBeginToken): 
-            index = tokens_list.index(token.pair) + 1
-            continue
-        index += 1
-    if panel.children:
-        width = sum(child.width for child in panel.children) + panel._space_between * (len(panel.children) - 1)
-        height = max(child.height for child in panel.children)
-        panel.width, panel.height = width, height
-    return panel
-
-######################################## Функции Для Не Типпичной Генерации ########################################
-
-def create_div_button(
-        panel: HorizontalLayout, 
-        tokens_list: list[tokens.Token], 
-        index_div: int) -> int:
-    index_pair_prev_bracket_layout = tokens_list.index(tokens_list[index_div - 1].pair)
-    index_pair_next_bracket_layout = tokens_list.index(tokens_list[index_div + 1].pair)
-    numerator = tokens_list[index_pair_prev_bracket_layout + 1:index_div - 1]
-    denominator = tokens_list[index_div + 1:index_pair_next_bracket_layout]
-    numerator = create_horizontal_layout(panel.expression_panel, numerator, panel.scale_coeff * 0.5)
-    denominator = create_horizontal_layout(panel.expression_panel, denominator, panel.scale_coeff * 0.5)
-    div = tokens_list[index_div]
-    panel.add(DivButton(panel.expression_panel, div, numerator, denominator))
-    return index_pair_next_bracket_layout + 1
-
-def create_pow_button(
-        panel: HorizontalLayout,
-        tokens_list: list[tokens.Token],
-        index_pow: int) -> int:
-    idex_pair_bracket_layout = tokens_list.index(tokens_list[index_pow + 1].pair)
-    exponent = tokens_list[index_pow + 1:idex_pair_bracket_layout]
-    power = tokens_list[index_pow]
-    panel.add(PowButton(panel.expression_panel, power, exponent))
-    return idex_pair_bracket_layout + 1
-
-build_functions = { 
-    nodes.Div : create_div_button,
-    nodes.Pow : create_pow_button
-}
-
-######################################## Класс Для Меню Actions ########################################
-
-class ActionsMenu(arcade.UIBoxLayout):
-    def __init__(self, panel: ExpressionPanel, node: nodes.Node):
-        super().__init__(vertical=True, space_between=2)
-        self.node = node
-        self.panel = panel
-        for name in node.actions:
-            btn = arcade.UIFlatButton(text=name, width=150, height=30, font_size=12)
-            @btn.event("on_click")
-            def on_click(event, n=name):
-                self.node.do_action(n)
-                self.panel.remove(self)
-                self.panel.rebuild()
+class ActionMenu(arcade.UIMouseFilterMixin, arcade.UIBoxLayout):
+    def __init__(self, panel: ExpressionPanel, node: nodes.Node, x: int, y: int):
+        super().__init__(vertical=True, space_between=1)
+        self.x, self.y = x, y
+        w, h = max([len(func.name) for func in node.actions]) * 13, 25
+        for func in node.actions:
+            btn = arcade.UIFlatButton(width=w, height=h, text=func.name, style=graphics.BUTTON_ACTION_MENU_STYLE)
+            btn.on_click = lambda e, f=func, n=node, p=panel: (f(n), p.build(), p.manager.remove(self))
             self.add(btn)
 
-######################################## Класс - Кнопка Для Одного Узла ########################################
+    def on_event(self, event):
+        if isinstance(event, arcade.UIMousePressEvent):
+            if self.rect.point_in_rect((event.x, event.y)):
+                return super().on_event(event)
+            self.parent.remove(self)
+            return True
+        return super().on_event(event)
 
 class NodeButton(arcade.UITextureButton):
-    def __init__(self, expression_panel: ExpressionPanel, node: nodes.Node):
-        super().__init__(texture=graphics.create_token_texture(str(node)))
-        self.expression_panel: ExpressionPanel = expression_panel
-        self.node: nodes.Node = node
-        self.menu: ActionsMenu = None
-
-    def on_click(self, event):
-        print('лкм')
-        if isinstance(self.node, nodes.Operator):
-            self.node.work()
-            self.expression_panel.build()  
-            if self.expression_panel.parent:
-                self.expression_panel.parent.trigger_layout()  
-    
-    def on_event(self, event):
-        if super().on_event(event): return True
-        if isinstance(event, arcade.UIMousePressEvent) and event.button == arcade.MOUSE_BUTTON_RIGHT:
-            print('пкм')
-            self.show_actions_menu()    
-            return True            
-        return False 
-
-    def show_actions_menu(self):
-        if self.menu and self.menu.parent:
-            self.expression_panel.remove(self.menu)
-            self.menu = None
-        else:
-            self.menu = ActionsMenu(self.expression_panel, self.node)
-            self.expression_panel.sandbox.ui.add(self.menu)
-            self.menu.x = self.right + 5
-            self.menu.y = self.top
-
-######################################## Не Типичные Классы - Кнопки ########################################
-
-class DivButton(NodeButton):
-    def __init__(self, panel: ExpressionPanel, node: nodes.Div, numerator: HorizontalLayout, denominator: HorizontalLayout):
-        texture = arcade.SpriteSolidColor(max(numerator.width, denominator.width), 26, color=graphics.BLACK).texture
-        super(arcade.UITextureButton).__init__(texture=texture)
-
-        self.panel = panel; self.node = node; self.menu = None
-        self.numerator: HorizontalLayout = numerator
-        self.denominator: HorizontalLayout = denominator
-
-        self.numerator.x = self.x + (self.width - self.numerator.width) / 2
-        self.numerator.y = self.y + self.height + 5
-        self.denominator.x = self.x + (self.width - self.denominator.width) / 2
-        self.denominator.y = self.y - self.denominator.height - 5
-
-class PowButton(NodeButton):
-    def __init__(self, panel: ExpressionPanel, node: nodes.Pow, exponent: HorizontalLayout):
-        texture = arcade.create_text_sprite('^', graphics.BLACK, 15).texture
-        super(arcade.UIFlatButton).__init__(texture=texture)
-        
+    def __init__(self, panel: ExpressionPanel, node: nodes.Node):
+        super().__init__(texture=graphics.create_token_texture(node))
         self.panel = panel
         self.node = node
-        self.menu = None
-        self.exponent = exponent
-        
-        self.y += 13
-        self.exponent.x = self.x + exponent.width / 2 + 5
-        self.exponent.y = self.y + exponent.height / 2
+        self.interaction_buttons = (arcade.MOUSE_BUTTON_LEFT, arcade.MOUSE_BUTTON_RIGHT)
+
+    def on_click(self, event):
+        match event.button:
+            case arcade.MOUSE_BUTTON_LEFT: 
+                if isinstance(self.node, nodes.Operator):
+                    self.node.work()
+                    self.panel.build()
+            case arcade.MOUSE_BUTTON_RIGHT:
+                self.panel.manager.add(ActionMenu(self.panel, self.node, event.x, event.y))

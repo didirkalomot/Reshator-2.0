@@ -4,11 +4,12 @@ from copy import deepcopy # для глубокого копирования
 import math # функции: sin, cos, log, ...
 import gc # для метода Node.replace
 from mechanics import tokens
+#import tokens
 
 
-def action(name, condition = None):
+def action(name: str, condition: function = None):
     def decorator(func):
-        func.action_name = name
+        func.name = name
         func.condition = condition
         return func
     return decorator
@@ -19,11 +20,11 @@ class Node(tokens.VisibleToken):
     ACTIONS : dict[str, callable] = {} 
 
     @property
-    def actions(self) -> dict[str, callable]:
+    def actions(self) -> tuple[function]:
         available_actions = []
-        for name, func in self.__class__.ACTIONS.items():
+        for func in self.__class__.ACTIONS.values():
             if func.condition is None or func.condition(self):
-                available_actions.append(name)
+                available_actions.append(func)
         return tuple(available_actions)
 
     def do_action(self, name_action: str) -> Node: 
@@ -743,8 +744,8 @@ def register_actions(cls=Node):
         sub.ACTIONS = {}
         for base in sub.__mro__: 
             for value in base.__dict__.values():
-                if hasattr(value, 'action_name'):
-                    sub.ACTIONS[value.action_name] = value
+                if hasattr(value, 'name'):
+                    sub.ACTIONS[value.name] = value
         register_actions(sub)
 
 register_actions()

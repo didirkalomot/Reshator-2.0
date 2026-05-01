@@ -1,5 +1,6 @@
 import re
 from mechanics import nodes
+#import nodes
 
 
 operations : dict[str : type[nodes.Operator]] = {

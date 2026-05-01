@@ -6,27 +6,27 @@ class Token:
 class VisibleToken(Token):
     def __len__(self): return len(str(self))
 
-class Bracket:
+class Bracket: # Миксин
     def __init__(self): self.pair: Bracket
 
 ######################################## Скобки ########################################
 
-class LayoutBeginToken(Token, Bracket):
+class LayoutBeginToken(Bracket, Token):
     def __str__(self): return '['
 
-class LayoutEndToken(Token, Bracket):
+class LayoutEndToken(Bracket, Token):
     def __str__(self): return ']'
 
-class OrderBracketLeftToken(VisibleToken, Bracket):
+class OrderBracketLeftToken(Bracket, VisibleToken):
     def __str__(self): return '('
 
-class OrderBracketRightToken(VisibleToken, Bracket):
+class OrderBracketRightToken(Bracket, VisibleToken):
     def __str__(self): return ')'
 
-class FunctionBracketLeftToken(VisibleToken, Bracket):
+class FunctionBracketLeftToken(Bracket, VisibleToken):
     def __str__(self): return '('
 
-class FunctionBracketRightToken(VisibleToken, Bracket):
+class FunctionBracketRightToken(Bracket, VisibleToken):
     def __str__(self): return ')'
 
 ####################################### Фабрика Скобок #######################################

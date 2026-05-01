@@ -8,8 +8,8 @@ from game import graphics
 class BaseMode(arcade.UIView):
     def __init__(self):
         super().__init__()
-        self.background_color = graphics.COLOR_BLACKBOARD
-        button = arcade.UIFlatButton(text="< Меню", width=100, style=graphics.BUTTON_GOTO_MENU_STYLE)
+        self.background_color = graphics.BLACKBOARD
+        button = arcade.UIFlatButton(text="меню", width=100, style=graphics.BUTTON_UI_STYLE)
         from game.views.menu import Menu
         @button.event("on_click")
         def on_click(event): self.window.show_view(Menu())
