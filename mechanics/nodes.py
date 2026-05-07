@@ -6,35 +6,53 @@ import gc # для метода Node.replace
 from mechanics import tokens
 #import tokens
 
+######################################## Классы Для Системы Действий ########################################
+
+class Action:
+    def __init__(self, func: function, name: str, condition: function = None):
+        self.name = name
+        self.condition = condition
+        self._func = func
+
+    def __call__(self, node: Node): self._func(node)
+
+class Actionable:
+    ACTIONS: list[Action] = []
+    INHERITED = True
+
+    def __init_subclass__(cls):
+        if 'INHERITED' not in cls.__dict__: cls.INHERITED = True
+        cls.ACTIONS = []
+        for atribute in cls.__dict__.values():
+            if isinstance(atribute, Action):
+                cls.ACTIONS.append(atribute)
+        if cls.INHERITED:
+            for base in cls.__bases__:
+                if issubclass(base, Actionable):
+                    cls.ACTIONS += base.ACTIONS
 
 def action(name: str, condition: function = None):
     def decorator(func):
-        func.name = name
-        func.condition = condition
-        return func
+        action_func = Action(func, name, condition)
+        return action_func
     return decorator
 
-######################################## Основной Класс ########################################
+######################################## Основной Класс Узла ########################################
 
-class Node(tokens.VisibleToken):
-    ACTIONS : dict[str, callable] = {} 
-
+class Node(Actionable, tokens.VisibleToken):
     @property
-    def actions(self) -> tuple[function]:
+    def actions(self) -> tuple[Action, ...]:
         available_actions = []
-        for func in self.__class__.ACTIONS.values():
+        for func in self.__class__.ACTIONS:
             if func.condition is None or func.condition(self):
                 available_actions.append(func)
         return tuple(available_actions)
 
-    def do_action(self, name_action: str) -> Node: 
-        func = self.__class__.ACTIONS[name_action]
-        if func.condition is None or func.condition(self): return func(self)
-        else: return self
-
     __slots__ = ['parent']
 
-    def __init__(self): self.parent: Operator | None = None
+    def __init__(self):
+        super().__init__()
+        self.parent: Operator | None = None
 
     def __iter__(self): raise NotImplementedError()
 
@@ -135,7 +153,7 @@ class Node(tokens.VisibleToken):
         return isinstance(parent, Factorable) and isinstance(parent.parent, Equal)
     @action('перенести за равно', parent_is_factorable_and_grand_is_equal)
     def transfer_via_equals(self): self.parent.parent.transfer(self)
-            
+         
 ######################################## Классы Для Значений ########################################
 
 class Value(Node):
@@ -406,7 +424,7 @@ class Postfix:
         yield right_bracket
         yield self
         
-class Associative: # Infix
+class Associative(Actionable): # Infix
     def both_operands_is_self_class(self): 
         return all(isinstance(oper, self.__class__) for oper in self.operands)
     @action('ассоциативность влево', both_operands_is_self_class)
@@ -456,7 +474,7 @@ class Associative: # Infix
     
     def _equals(self, other: Associative) -> bool: return self.to_list() == other.to_list()
 
-class Commutative: # Infix
+class Commutative(Actionable): # Infix
     def __hash__(self):
         return hash(( self.__class__, *sorted(
             str(op.value) if isinstance(op, Value) else op.__class__.__name__
@@ -470,7 +488,7 @@ class Commutative: # Infix
         """a ∘ b → b ∘ a - поменять операнды местами"""
         self.one, self.two = self.two, self.one
 
-class AssociativeCommutative(Associative, Commutative):# Infix
+class AssociativeCommutative(Associative, Commutative): # Infix
     def _key(self):
         return sorted(
             str(op.value) if isinstance(op, Value) else op.__class__.__name__
@@ -480,7 +498,7 @@ class AssociativeCommutative(Associative, Commutative):# Infix
     
     def _equals(self, other: AssociativeCommutative): return self._key() == other._key()
 
-class Factorable:# Infix
+class Factorable(Actionable): # Infix
     def both_operands_is_muls(self) -> bool: return all(isinstance(oper, Mult) for oper in self.operands)
 
     def get_common_factor(self) -> Node | None:
@@ -518,26 +536,6 @@ class Factorable:# Infix
         self.replace(new_div)
 
 ######################################## Итоговые Классы Операторов ########################################
-
-class Equal(Commutative, Infix, Operator):
-    PRIORITY = 100
-    
-    def __init__(self, left_hand_side, right_hand_side): super().__init__(left_hand_side, right_hand_side)
-
-    def __str__(self): return "="
-
-    def transfer(self, node: Node):        
-        parent = node.parent
-        grand = parent.parent
-        if isinstance(parent, Factorable) and grand is self:            
-            if isinstance(parent, BinaryMinus): parent.as_plus()
-            other = parent.other_operand(node)
-            if grand.one is parent:
-                grand.one = other
-                grand.two = Plus(self.two, UnaryMinus(node))
-            else:
-                grand.two = other
-                grand.one = Plus(UnaryMinus(node), self.one)
 
 class Plus(Factorable, AssociativeCommutative, Infix, Operator):         
     PRIORITY = 5
@@ -737,15 +735,33 @@ class Ln(Prefix, Operator):
         try: return Number(math.log(self.one.value, math.e))
         except TypeError: return NotImplemented
   
-######################################## Вспомогательная Часть ########################################        
+######################################## Класс Равенства ########################################     
 
-def register_actions(cls=Node):
-    for sub in cls.__subclasses__():
-        sub.ACTIONS = {}
-        for base in sub.__mro__: 
-            for value in base.__dict__.values():
-                if hasattr(value, 'name'):
-                    sub.ACTIONS[value.name] = value
-        register_actions(sub)
+class Equal(Commutative, Infix, Operator):
+    PRIORITY = 100
+    INHERITED = False # отказ от наследования действий
+    
+    def __init__(self, left_hand_side, right_hand_side): super().__init__(left_hand_side, right_hand_side)
 
-register_actions()
+    def __str__(self): return "="
+
+    def transfer(self, node: Node):        
+        parent = node.parent
+        grand = parent.parent
+        if isinstance(parent, Factorable) and grand is self:            
+            if isinstance(parent, BinaryMinus): parent.as_plus()
+            other = parent.other_operand(node)
+            if grand.one is parent:
+                grand.one = other
+                grand.two = Plus(self.two, UnaryMinus(node))
+            else:
+                grand.two = other
+                grand.one = Plus(UnaryMinus(node), self.one) 
+
+    @action('поменять левую и правую части')
+    def swap_left_and_right(self): super().commutative(self)
+
+    @action('умножить на -1')
+    def multiply_by_minus_one(self):
+        self.one = UnaryMinus(self.one)
+        self.two = UnaryMinus(self.two)

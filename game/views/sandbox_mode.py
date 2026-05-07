@@ -10,7 +10,7 @@ BUILD_FUNCTIONS = {}
 class SandboxMode(BaseMode):
     def __init__(self):
         super().__init__()
-        self.expression = ExpressionPanel(self.ui, parse.infix_to_tree('(1 + 2) * 3'))
+        self.expression = ExpressionPanel(self.ui, parse.infix_to_tree('3 = x + 4'))
         anchor = arcade.UIAnchorLayout(width=self.width-100, height=self.height-100)
         anchor.add(self.expression, anchor_x="center", anchor_y="center")
         self.ui.add(anchor)
@@ -61,7 +61,8 @@ class NodeButton(arcade.UITextureButton):
         match event.button:
             case arcade.MOUSE_BUTTON_LEFT: 
                 if isinstance(self.node, nodes.Operator):
-                    self.node.work()
+                    self.node.work(self.node)
                     self.panel.build()
             case arcade.MOUSE_BUTTON_RIGHT:
-                self.panel.manager.add(ActionMenu(self.panel, self.node, event.x, event.y))
+                if self.node.actions:
+                    self.panel.manager.add(ActionMenu(self.panel, self.node, event.x, event.y))
