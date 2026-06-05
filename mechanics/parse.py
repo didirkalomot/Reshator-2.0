@@ -1,7 +1,5 @@
-import re
 from mechanics import nodes
 #import nodes
-
 
 operations : dict[str : type[nodes.Operator]] = {
     '^' : nodes.Pow,
@@ -20,6 +18,7 @@ operations : dict[str : type[nodes.Operator]] = {
 
 operations_sorted = sorted(operations.keys(), key=len, reverse=True)
 fist_chars_operations = {op[0] for op in operations.keys()}
+unary_context = set(operations.keys()) | {'('}
 
 def is_operator(token) -> bool:
     return token in operations
@@ -45,6 +44,34 @@ def remove_bracfast(string: str) -> str:
                 if balance == 0: return string 
         string = string[1:-1]
     return string
+
+def wrap_unary_minus(expr: str) -> str:
+    result = []
+    i = 0
+    n = len(expr)
+    while i < n:
+        if expr[i] == '-':
+            # Унарный, если начало строки или предыдущий символ в unary_context
+            if i == 0 or expr[i-1] in unary_context:
+                result.append('~(')
+                i += 1
+                start = i
+                balance = 0
+                while i < n:
+                    if expr[i] == '(':
+                        balance += 1
+                    elif expr[i] == ')':
+                        balance -= 1
+                    elif balance == 0 and expr[i] in unary_context:  # останов перед оператором
+                        break
+                    i += 1
+                result.append(expr[start:i])
+                result.append(')')
+                continue
+        result.append(expr[i])
+        i += 1
+    return ''.join(result)
+
 
 def find_last_operation(string: str):
     candidates = []
@@ -136,7 +163,8 @@ def infix_to_prefix(string: str) -> str:
                 return f'{symbol}({left},{right})'
             
     if not string: return None
-    return recursive_infix_to_prefix(string.replace(' ', ''))
+    string = wrap_unary_minus(string.replace(' ', ''))
+    return recursive_infix_to_prefix(string)
 
 def prefix_to_tree(string: str) -> nodes.Node:
     string = string.replace(' ', '')
@@ -171,4 +199,4 @@ def prefix_to_tree(string: str) -> nodes.Node:
     if len(stack) != 1: raise ValueError(f'недопустимое выражение')
     return stack[0]
 
-def infix_to_tree(string: str) -> nodes.Node: return prefix_to_tree(infix_to_prefix(string))
+def create_tree(string: str) -> nodes.Node: return prefix_to_tree(infix_to_prefix(string))

@@ -17,11 +17,20 @@ FONT_SIZE = 30
 CHAR_WIDTH = 31
 CHAR_HEIGHT = 61
 
-def create_token_texture(token: tokens.VisibleToken, color = WHITE) -> arcade.Texture:
+def create_token_texture(token: tokens.VisibleToken, 
+                         color: arcade.Color = WHITE, 
+                         font_size: float = 1) -> arcade.Texture:
     text = str(token)
-    sprite = arcade.create_text_sprite(text, color, FONT_SIZE, font_name=FONT_NAME)
-    #sprite.width = CHAR_WIDTH * len(text) # возможно уберу
-    #sprite.height = CHAR_HEIGHT           # возможно уберу
+    sprite = arcade.create_text_sprite(text, 
+                                       color, 
+                                       FONT_SIZE * font_size, 
+                                       font_name=FONT_NAME)
+    return sprite.texture
+
+def create_line_texture(width: int, 
+                        height: int, 
+                        color: arcade.Color = WHITE) -> arcade.Texture:
+    sprite = arcade.SpriteSolidColor(width, height, color)
     return sprite.texture
 
 BUTTON_ACTION_MENU_STYLE = {

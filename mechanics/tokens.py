@@ -11,10 +11,13 @@ class Bracket: # Миксин
 
 ######################################## Скобки ########################################
 
-class LayoutBeginToken(Bracket, Token):
+class NestedBeginToken(Bracket, Token):
+    def __init__(self):
+        super().__init__()
+        self.operator: Token
     def __str__(self): return '['
 
-class LayoutEndToken(Bracket, Token):
+class NestedEndToken(Bracket, Token):
     def __str__(self): return ']'
 
 class OrderBracketLeftToken(Bracket, VisibleToken):
@@ -42,7 +45,21 @@ class BracketFactory:
         left.pair = right
         right.pair = left
         return left, right
-
-layout_bounds = BracketFactory(LayoutBeginToken, LayoutEndToken)
+    
 brackets = BracketFactory(OrderBracketLeftToken, OrderBracketRightToken)
 function_brackets = BracketFactory(FunctionBracketLeftToken, FunctionBracketRightToken)
+
+class NestedFactory(BracketFactory):
+    def __init__(self, left_cls, right_cls):
+        super().__init__(left_cls, right_cls)
+
+    def create_pair(self, operator):
+        left, right = super().create_pair()
+        left.operator = operator
+        return left, right
+
+nested_bounds = NestedFactory(NestedBeginToken, NestedEndToken)
+
+####################################### Токен Конца Оператора #######################################
+
+class EndToken(Token): pass

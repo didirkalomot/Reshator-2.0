@@ -390,7 +390,7 @@ class Infix:
 
     def __iter__(self):
         left, right = self.operands
-        def walk(operand, need_parens):
+        def wrap(operand, need_parens):
             if need_parens:
                 left_bracket, right_bracket = tokens.brackets.create_pair()
                 yield left_bracket
@@ -398,9 +398,9 @@ class Infix:
                 yield right_bracket
             else: yield from operand
 
-        yield from walk(left, self._needs_parentheses(left, True))
+        yield from wrap(left, self._needs_parentheses(left, True))
         yield self
-        yield from walk(right, self._needs_parentheses(right, False))
+        yield from wrap(right, self._needs_parentheses(right, False))
 
     def other_operand(self, node: Node) -> Node:
         if not self.is_child(node): raise NotImplementedError()
@@ -615,15 +615,13 @@ class Div(Infix, Operator):
     def __str__(self): return '/'
 
     def __iter__(self):
-        numerator_begin, numerator_end = tokens.layout_bounds.create_pair()
-        denominator_begin, denominator_end = tokens.layout_bounds.create_pair() 
-        yield numerator_begin
+        self.end_token = tokens.EndToken()
+        div_begin, div_end = tokens.nested_bounds.create_pair(self)
+        yield div_begin
         yield from self.one
-        yield numerator_end
         yield self
-        yield denominator_begin
-        yield from self.two
-        yield denominator_end
+        yield from self.two      
+        yield div_end
 
     @action('раскрыть числитель', lambda self: isinstance(self.one, Factorable))
     def expend_numerator(self):
@@ -647,12 +645,13 @@ class Pow(Infix, Operator):
     def __str__(self): return '^'
 
     def __iter__(self):
-        exponent_begin, exponent_end = tokens.layout_bounds.create_pair()
+        self.end_token = tokens.EndToken()
+        pow_begin, pow_end = tokens.nested_bounds.create_pair(self)
+        yield pow_begin
         yield from self.one
         yield self
-        yield exponent_begin
         yield from self.two
-        yield exponent_end
+        yield pow_end
 
     def result(self) -> Node:
         if self.two == Number.ONE: return self.one
@@ -669,6 +668,8 @@ class UnaryMinus(Prefix, Operator):
 
     def result(self) -> Node:
         if isinstance(self.one, UnaryMinus): return self.one.one
+        if isinstance(self.one, Plus): 
+            return BinaryMinus(UnaryMinus(self.one.one), self.one.two)
         try: return -self.one
         except TypeError: return NotImplemented
 
@@ -697,19 +698,26 @@ class Cos(Prefix, Operator):
         except TypeError: return NotImplemented
         
 class Log(Prefix, Operator):
-    ARITY = 2                          
-    PRIORITY = 1                         
+    ARITY = 2
+    PRIORITY = 1
 
-    def __init__(self, base: Node, x: Node):
+    def __init__(self, base: Node, arg: Node):
         if isinstance(base, Number):
             if base <= 0 or base == 1: raise ValueError(f'основание логарифма: {base}')
-        super().__init__(base, x)
+        super().__init__(base, arg)
 
     def __str__(self): return 'log'
 
-    def result(self) -> Node:
-        try: return Number(math.log(self.two.value, self.one.value))
-        except TypeError: return NotImplemented
+    def __iter__(self):
+        log_begin, log_end = tokens.nested_bounds.create_pair(self)
+        arg_begin, arg_end = tokens.function_brackets.create_pair()
+        yield log_begin
+        yield self
+        yield from self.one
+        yield arg_begin
+        yield from self.two
+        yield arg_end
+        yield log_end
         
 class Lg(Prefix, Operator):
     ARITY = 1
@@ -741,7 +749,8 @@ class Equal(Commutative, Infix, Operator):
     PRIORITY = 100
     INHERITED = False # отказ от наследования действий
     
-    def __init__(self, left_hand_side, right_hand_side): super().__init__(left_hand_side, right_hand_side)
+    def __init__(self, left_hand_side, right_hand_side): 
+        super().__init__(left_hand_side, right_hand_side)
 
     def __str__(self): return "="
 

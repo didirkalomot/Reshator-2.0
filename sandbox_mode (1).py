@@ -3,18 +3,17 @@ from game import arcade_import as arcade
 from game.views.base_mode import BaseMode
 from game import graphics
 from mechanics import nodes, tokens, parse
-from typing import Callable, Dict, List, Any, Optional
 
 # =============================================================================
 # СИСТЕМА ФУНКЦИЙ ГЕНЕРАЦИИ ДЛЯ СПЕЦИАЛЬНЫХ ОПЕРАТОРОВ
 # =============================================================================
 
-BUILD_FUNCTIONS: Dict[type, Callable] = {}
+BUILD_FUNCTIONS: dict[type, function] = {}
 
 
 def register_build_function(token_class: type):
     """Декоратор для регистрации функции построения."""
-    def decorator(func: Callable):
+    def decorator(func: function):
         BUILD_FUNCTIONS[token_class] = func
         return func
     return decorator
@@ -60,8 +59,8 @@ def _create_fake_panel():
     return FakePanel()
 
 
-def build_expression(panel: ExpressionPanel, token_list: List[Any], 
-                     start_index: int = 0, end_index: Optional[int] = None) -> int:
+def build_expression(panel: ExpressionPanel, token_list: list, 
+                     start_index: int = 0, end_index: int | None = None) -> int:
     """Рекурсивная функция построения UI из списка токенов."""
     if end_index is None:
         end_index = len(token_list)
@@ -107,7 +106,7 @@ def build_expression(panel: ExpressionPanel, token_list: List[Any],
 # =============================================================================
 
 @register_build_function(nodes.Div)
-def build_div(index: int, token_list: List[Any], panel: ExpressionPanel) -> int:
+def build_div(index: int, token_list: list, panel: ExpressionPanel) -> int:
     """Построение дроби: вертикальный контейнер (числитель, черта, знаменатель)."""
     div_node = token_list[index]
     
@@ -154,7 +153,7 @@ def build_div(index: int, token_list: List[Any], panel: ExpressionPanel) -> int:
 
 
 @register_build_function(nodes.Pow)
-def build_pow(index: int, token_list: List[Any], panel: ExpressionPanel) -> int:
+def build_pow(index: int, token_list: list, panel: ExpressionPanel) -> int:
     """Построение степени: основание + приподнятый показатель."""
     pow_node = token_list[index]
     
@@ -185,7 +184,7 @@ def build_pow(index: int, token_list: List[Any], panel: ExpressionPanel) -> int:
 
 
 @register_build_function(nodes.Log)
-def build_log(index: int, token_list: List[Any], panel: ExpressionPanel) -> int:
+def build_log(index: int, token_list: list, panel: ExpressionPanel) -> int:
     """Построение логарифма: log(аргумент) с основанием снизу."""
     log_node = token_list[index]
     
@@ -223,7 +222,7 @@ def build_log(index: int, token_list: List[Any], panel: ExpressionPanel) -> int:
 
 
 @register_build_function(nodes.Equal)
-def build_equal(index: int, token_list: List[Any], panel: ExpressionPanel) -> int:
+def build_equal(index: int, token_list: list, panel: ExpressionPanel) -> int:
     """Построение знака равенства."""
     equal_node = token_list[index]
     panel.add(NodeButton(panel, equal_node))
