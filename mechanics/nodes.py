@@ -9,12 +9,15 @@ from mechanics import tokens
 ######################################## Классы Для Системы Действий ########################################
 
 class Action:
-    def __init__(self, func: function, name: str, condition: function = None):
+    def __init__(self, func, name, condition = None, interactive = False):
         self.name = name
         self.condition = condition
         self._func = func
+        self.interactive = interactive
 
-    def __call__(self, node: Node): self._func(node)
+    def __call__(self, node, arg_node=None):
+        if self.interactive: return self._func(node, arg_node)
+        else: return self._func(node)
 
 class Actionable:
     ACTIONS: list[Action] = []
@@ -31,9 +34,9 @@ class Actionable:
                 if issubclass(base, Actionable):
                     cls.ACTIONS += base.ACTIONS
 
-def action(name: str, condition: function = None):
+def action(name: str, condition: function = None, interactive = False):
     def decorator(func):
-        action_func = Action(func, name, condition)
+        action_func = Action(func, name, condition, interactive)
         return action_func
     return decorator
 
@@ -142,11 +145,11 @@ class Node(Actionable, tokens.VisibleToken):
         return parent
             
     def not_self_already_neg(self): return not (isinstance(self, UnaryMinus) or isinstance(self.parent, UnaryMinus))        
-    @action('представить как противоположный', not_self_already_neg)
-    def as_neg(self) -> Node: self.replace(UnaryMinus(UnaryMinus(deepcopy(self))))
+    @action('умножить на -1', not_self_already_neg)
+    def mult_by_minus_one(self) -> Node: self.replace(UnaryMinus(UnaryMinus(deepcopy(self))))
 
-    @action('представить как дробь', lambda self: not isinstance(self, Div))
-    def as_fraction(self) -> Node: self.replace(Div(deepcopy(self), Number(1)))
+    @action('разделить на 1', lambda self: not isinstance(self, Div))
+    def div_by_one(self) -> Node: self.replace(Div(deepcopy(self), Number(1)))
 
     def parent_is_factorable_and_grand_is_equal(self): 
         parent = self.parent
@@ -179,7 +182,12 @@ class Value(Node):
         return result
     
 class Number(Value):
+    ONE = None
+    ZERO = None
+
     def __init__(self, value: float): super().__init__(value)
+
+    def is_integer(self)-> bool: return self.value.is_integer()
 
     def __str__(self) -> str:
         if self.value.is_integer(): return str(int(self.value))
@@ -331,8 +339,8 @@ class Operator(Node):
     def work(self): 
         if (result := self.result()) is not NotImplemented: self.replace(result) 
 
-    def solve(self) -> None:
-        for i, operand in enumerate(self.operands):
+    def solve(self) -> Node:
+        for operand in enumerate(self.operands):
             if isinstance(operand, Operator):
                 operand.solve()
         self.work()
@@ -403,7 +411,7 @@ class Infix:
         yield from wrap(right, self._needs_parentheses(right, False))
 
     def other_operand(self, node: Node) -> Node:
-        if not self.is_child(node): raise NotImplementedError()
+        if not self.is_child(node): raise ValueError()
         return self.two if node is self.one else self.one
 
 class Postfix:
@@ -544,18 +552,40 @@ class Plus(Factorable, AssociativeCommutative, Infix, Operator):
           
     def __str__(self): return '+'
 
+    def operands_are_logs_with_equal_base(self) -> bool:
+        return all(isinstance(op, Log) for op in self.operands) and self.one.one == self.two.one
+    @action('свернуть сумму логарифмов', operands_are_logs_with_equal_base)
+    def plus_to_log(self): 
+        new_arg = Mult(self.one.two, self.two.two)
+        new_log = self.one.create_same(new_arg)
+        self.replace(new_log)
+
     def result(self) -> Node:
         if self.one == Number.ZERO: return self.two
         if self.two == Number.ZERO: return self.one
         try: return self.one + self.two
         except TypeError: return NotImplemented
 
-class BinaryMinus(Factorable, Infix, Operator):           
+class BinaryMinus(Factorable, Infix, Operator):         
     PRIORITY = 5
 
     def __init__(self, minuend, subtrahend): super().__init__(minuend, subtrahend)
 
     def __str__(self): return '-'
+
+    @action('представить как сумму')
+    def as_plus(self):
+        if isinstance(self.two, Number): self.replace(Plus(self.one, -self.two))  
+        elif isinstance(self.two, UnaryMinus): self.replace(Plus(self.one, self.two.one))  
+        else: self.replace(Plus(self.one, UnaryMinus(self.two)))
+
+    def operands_are_logs_with_equal_base(self) -> bool:
+        return all(isinstance(op, Log) for op in self.operands) and self.one.one == self.two.one
+    @action('свернуть разность логарифмов', operands_are_logs_with_equal_base)
+    def minus_to_log(self):
+        new_arg = Div(self.one.two, self.two.two)
+        new_log = self.one.create_same(new_arg)
+        self.replace(new_log)
 
     def result(self) -> Node:
         if self.one == Number.ZERO: return UnaryMinus(self.two)
@@ -563,12 +593,6 @@ class BinaryMinus(Factorable, Infix, Operator):
         try: return self.one - self.two
         except TypeError: return NotImplemented
 
-    @action('представить как сумму')
-    def as_plus(self):
-        if isinstance(self.two, Number): self.replace(Plus(self.one, -self.two))  
-        elif isinstance(self.two, UnaryMinus): self.replace(Plus(self.one, self.two.one))  
-        else: self.replace(Plus(self.one, UnaryMinus(self.two)))
-                  
 class Mult(AssociativeCommutative, Infix, Operator):
     PRIORITY = 4    
 
@@ -592,18 +616,22 @@ class Mult(AssociativeCommutative, Infix, Operator):
             self.two.operands[i] = Mult(deepcopy(self.one), operand)
         self.replace(self.two)
 
-    def one_operand_is_factorable(self) -> bool: 
+    def only_one_operand_is_factorable(self) -> bool: 
         return isinstance(self.one, Factorable) != isinstance(self.two, Factorable)
-    @action('раскрыть скобку', one_operand_is_factorable)
+    @action('раскрыть скобку', only_one_operand_is_factorable)
     def factor_in(self) -> Node:
-        if isinstance(self.one, Factorable): self.factor_in_left()
-        else: self.factor_in_right()   
+        if isinstance(self.one, Factorable): self.factor_in_left(self)
+        else: self.factor_in_right(self)  
 
     def result(self) -> Node:
         if self.one == Number.ONE: return self.two
         if self.two == Number.ONE: return self.one        
         if isinstance(self.one, Div) and isinstance(self.two,  Div): 
             return Div(Mult(self.one.one, self.two.one), Mult(self.one.two, self.two.two))
+        if isinstance(self.one, Div) and not isinstance(self.two, Div):
+            return Div(Mult(self.one.one, self.two), self.one.two)
+        if isinstance(self.two, Div) and not isinstance(self.one, Div):
+            return Div(Mult(self.one, self.two.one), self.two.two)
         try: return self.one * self.two
         except TypeError: return NotImplemented
 
@@ -624,11 +652,21 @@ class Div(Infix, Operator):
         yield div_end
 
     @action('раскрыть числитель', lambda self: isinstance(self.one, Factorable))
-    def expend_numerator(self):
-        if not isinstance(self.one, Plus): return
-        for i, operand in enumerate(self.one.operands): 
-            self.one.operands[i] = Div(operand, deepcopy(self.two))
-        self.replace(self.one)
+    def expand_numerator(self):
+        if isinstance(self.one, Plus):
+            new_operands = [Div(operand, deepcopy(self.two)) for operand in self.one.operands]
+            self.replace(Plus.from_list(new_operands))
+        elif isinstance(self.one, BinaryMinus):
+            left = Div(self.one.one, deepcopy(self.two))
+            right = Div(self.one.two, deepcopy(self.two))
+            self.replace(BinaryMinus(left, right))
+
+    def denominator_is_mult(self) -> bool: return isinstance(self.two, Mult)
+    @action('раскрыть деление на произведение', denominator_is_mult)
+    def expand_denominator_product(self):
+        left = Div(deepcopy(self.one), deepcopy(self.two.one))
+        right = Div(deepcopy(self.one), deepcopy(self.two.two))
+        self.replace(Mult(left, right))
 
     def result(self) -> Node:
         if self.one == Number.ZERO: return Number(0)
@@ -651,7 +689,21 @@ class Pow(Infix, Operator):
         yield from self.one
         yield self
         yield from self.two
-        yield pow_end
+        yield pow_end 
+
+    def exponent_is_int_and_positive(self) -> bool:
+        return isinstance(self.two, Number) and self.two.is_integer() and self.two > 0
+    @action('представить как умножение', exponent_is_int_and_positive)
+    def as_mult(self):
+        base = self.one
+        exp = int(self.two.value)
+        result = base
+        for _ in range(exp - 1):
+            result = Mult(deepcopy(base), result)
+        self.replace(result)
+
+    @action('перенос степени в знаменатель')
+    def as_div(self): self.replace(Div(Number.ONE, Pow(self.one, UnaryMinus(self.two))))
 
     def result(self) -> Node:
         if self.two == Number.ONE: return self.one
@@ -701,9 +753,15 @@ class Log(Prefix, Operator):
     ARITY = 2
     PRIORITY = 1
 
+    def create_same(self, arg): return self.__class__(self.one, arg)
+
+    @property
+    def two(self): return self.operands[1]
+
     def __init__(self, base: Node, arg: Node):
-        if isinstance(base, Number):
+        if isinstance(base, Number): 
             if base <= 0 or base == 1: raise ValueError(f'основание логарифма: {base}')
+        if isinstance(arg, Number) and arg <= 0: raise ValueError(f'аргумент логарифма: {base}')
         super().__init__(base, arg)
 
     def __str__(self): return 'log'
@@ -718,30 +776,67 @@ class Log(Prefix, Operator):
         yield from self.two
         yield arg_end
         yield log_end
-        
-class Lg(Prefix, Operator):
-    ARITY = 1
-    PRIORITY = 1                       
 
-    def __init__(self, x: Node): super().__init__(x)
+    @action('разложить логарифм произведения', lambda self: isinstance(self.two, Mult))
+    def arg_mult_to_pluse(self): 
+        self.replace(Plus(self.create_same(self.two.one), self.create_same(self.two.two)))
+
+    @action('разложить логарифм деления', lambda self: isinstance(self.two, Div))
+    def arg_div_to_minus(self):
+        self.replace(BinaryMinus(self.create_same(self.two.one), self.create_same(self.two.two)))
+
+    @action('вынести степень аргумента', lambda self: isinstance(self.two, Pow))
+    def arg_pow_to_mult(self):
+        self.replace(Mult(self.two.two, self.create_same(self.two.one)))
+
+    @action('внести множитель логарифма', lambda self: isinstance(self.parent, Mult))
+    def mult_to_arg_pow(self):
+        factor = self.parent.other_operand(self)
+        new_log = self.create_same(Pow(self.two, factor))
+        self.parent.replace(new_log)
+
+    @action('вынести степень основания', lambda self: isinstance(self.one, Pow))
+    def base_pow_to_mult(self):
+        self.replace(Mult(Div(Number.ONE, self.one.two), Log(self.one.one, self.two)))
+
+    @action('переход к новому основанию', interactive=True)
+    def change_base(self, new_base: Node):
+        self.replace(Div(Log(new_base, self.two), Log(new_base, self.one)))
+
+    def result(self) -> Node:
+        if self.one == self.two: return Number.ONE
+        if self.two == Number.ONE: return Number.ZERO
+        if isinstance(self.two, Pow) and self.one == self.two.two: return self.two.two
+        try: return Number(math.log(self.two.value, self.one.value))
+        except (TypeError, AttributeError): return NotImplemented
+
+class ConstBaseLog(Log): # вспомогательный класс
+    BASE: Number = None
+
+    def create_same(self, arg): return self.__class__(arg)
+
+    def __init__(self, arg): super().__init__(self.__class__.BASE, arg)
+
+    def __iter__(self):
+        arg_begin, arg_end = tokens.function_brackets.create_pair()
+        yield self
+        yield arg_begin
+        yield from self.two
+        yield arg_end
+
+class Lg(ConstBaseLog):
+    ARITY = 1
+    PRIORITY = 1    
+    BASE = Number(10)        
 
     def __str__(self): return 'lg'
-
-    def result(self) -> Node:
-        try: return Number(math.log(self.one.value, 10))
-        except TypeError: return NotImplemented
     
-class Ln(Prefix, Operator):
+class Ln(ConstBaseLog):
     ARITY = 1
-    PRIORITY = 1                       
-
-    def __init__(self, x: Node): super().__init__(x)
+    PRIORITY = 1    
+    BASE = Number(math.e)
    
     def __str__(self): return 'ln'
-
-    def result(self) -> Node:
-        try: return Number(math.log(self.one.value, math.e))
-        except TypeError: return NotImplemented
   
 ######################################## Класс Равенства ########################################     
 
