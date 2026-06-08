@@ -8,7 +8,8 @@ from copy import deepcopy
 class SandboxMode(BaseMode):
     def __init__(self):
         super().__init__()
-        self.expression = ExpressionPanel(self.ui, parse.create_tree('1 + 3 = z'))
+        string = 'x * x * x'
+        self.expression = ExpressionPanel(self.ui, parse.create_tree(string))
         anchor = arcade.UIAnchorLayout()
         anchor.add(self.expression, anchor_x='center', anchor_y='center')
         self.ui.add(anchor)
@@ -55,22 +56,13 @@ def main_build(panel: ExpressionPanel,
         i+=1
 
 def log_build(panel: ExpressionPanel, root: nodes.Log, font_size: float):    
-    log = arcade.UIBoxLayout(vertical=False, space_between=2)
+    log = arcade.UIBoxLayout(vertical=False, space_between=5)
     log_btn = NodeButton(panel, root, font_size)
     base_panel = ExpressionPanel(panel.ui, root.one, font_size * 0.6, panel.main_panel)
-    arg_panel = ExpressionPanel(panel.ui, root.two, font_size, panel.main_panel)
-
     anchor = arcade.UIAnchorLayout(size_hint=(0, 1))
-    left_bracket = arcade.UIImage(texture=graphics.create_token_texture(tokens.FunctionBracketLeftToken(), graphics.YELLOW))
-    right_bracket = arcade.UIImage(texture=graphics.create_token_texture(tokens.FunctionBracketRightToken(), graphics.YELLOW))
-
     anchor.add(base_panel, anchor_x='center', anchor_y='bottom')
     log.add(log_btn)
     log.add(anchor)
-    log.add(left_bracket)
-    log.add(arg_panel)
-    log.add(right_bracket)
-    log.do_layout()
     panel.add(log)
 
 def div_build(panel: ExpressionPanel, root: nodes.Div, font_size: float):
@@ -86,18 +78,18 @@ def div_build(panel: ExpressionPanel, root: nodes.Div, font_size: float):
     fraction.add(numerator)
     fraction.add(line_button)
     fraction.add(denominator)
-    fraction.do_layout()
     panel.add(fraction)
 
 def pow_build(panel: ExpressionPanel, root: nodes.Pow, font_size: float):
     pow = arcade.UIBoxLayout(vertical=False, space_between=2)
+    pow_btn = NodeButton(panel, root, font_size * 0.6)
     base_panel = ExpressionPanel(panel.ui, root.one, font_size, panel.main_panel)
     exp_panel = ExpressionPanel(panel.ui, root.two, font_size * 0.6, panel.main_panel)
     anchor = arcade.UIAnchorLayout(size_hint=(0, 1))
-    anchor.add(exp_panel, anchor_x='center', anchor_y='top')
+    anchor.add(exp_panel, anchor_x='left', anchor_y='top')
+    anchor.add(pow_btn, anchor_x='right', anchor_y='top')
     pow.add(base_panel)
     pow.add(anchor)
-    pow.do_layout()
     panel.add(pow)
 
 NESTED_OPERATORS: dict[type[nodes.Operator], function] = {    

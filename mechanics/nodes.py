@@ -12,8 +12,8 @@ class Action:
     def __init__(self, func, name, condition = None, interactive = False):
         self.name = name
         self.condition = condition
-        self._func = func
         self.interactive = interactive
+        self._func = func
 
     def __call__(self, node, arg_node=None):
         if self.interactive: return self._func(node, arg_node)
@@ -273,7 +273,9 @@ class Letter(Value):
     
     def __mul__(self, other):
         if other == Number.ZERO: return Number(0)
-        if self == other: return Pow(deepcopy(self), 2)
+        if self == other: return Pow(self, Number(2))         
+        if isinstance(other, Pow) and other.one == self:
+            return Pow(self, Number(other.two.value + 1))
         return NotImplemented
     
     def __truediv__(self, other):
@@ -290,8 +292,7 @@ class Operator(Node):
 
     def __init__(self, *operands: Node):
         self.operands: list[Node] = list(operands)
-        for node in self.operands:
-            node.parent = self
+        for node in self.operands: node.parent = self
         super().__init__()
 
     @property
@@ -326,12 +327,7 @@ class Operator(Node):
             if i == len(self.operands) - 1: oper.print_tree(prefix + '└── ')
             else: oper.print_tree(prefix + '├── ')
 
-    def is_child(self, node: Node) -> bool: return any(operand is node for operand in self.operands)
-    
-    def is_descendant(self, node: Node):
-        return (self is node or 
-            any(isinstance(n, Operator) and n.is_descendant(node) 
-                for n in self.operands))
+    #def is_child(self, node: Node) -> bool: return any(operand is node for operand in self.operands)
 
     def result(self) -> Value: return NotImplemented
 
@@ -340,10 +336,11 @@ class Operator(Node):
         if (result := self.result()) is not NotImplemented: self.replace(result) 
 
     def solve(self) -> Node:
-        for operand in enumerate(self.operands):
-            if isinstance(operand, Operator):
-                operand.solve()
+        copy = deepcopy(self)
+        for op in copy.operands:
+            if isinstance(op, Operator): op.solve()
         self.work()
+        return copy
 
 ######################################## Миксины Для Операторов ########################################
 
@@ -449,9 +446,9 @@ class Associative(Actionable): # Infix
             self.two = self.__class__(self.one.two, self.two)
             self.one = self.one.one
 
-    def one_operand_is_self_class(self): 
+    def only_one_operand_is_self_class(self): 
         return isinstance(self.one, self.__class__) != isinstance(self.two, self.__class__)
-    @action('ассоциативность', one_operand_is_self_class)
+    @action('ассоциативность', only_one_operand_is_self_class)
     def associative(self):
         if isinstance(self.one, self.__class__):  self.associative_right()
         else: self.associative_left()
@@ -643,7 +640,6 @@ class Div(Infix, Operator):
     def __str__(self): return '/'
 
     def __iter__(self):
-        self.end_token = tokens.EndToken()
         div_begin, div_end = tokens.nested_bounds.create_pair(self)
         yield div_begin
         yield from self.one
@@ -683,7 +679,6 @@ class Pow(Infix, Operator):
     def __str__(self): return '^'
 
     def __iter__(self):
-        self.end_token = tokens.EndToken()
         pow_begin, pow_end = tokens.nested_bounds.create_pair(self)
         yield pow_begin
         yield from self.one
@@ -692,15 +687,13 @@ class Pow(Infix, Operator):
         yield pow_end 
 
     def exponent_is_int_and_positive(self) -> bool:
-        return isinstance(self.two, Number) and self.two.is_integer() and self.two > 0
+        return isinstance(self.two, Number) and self.two.is_integer() and self.two > 1
     @action('представить как умножение', exponent_is_int_and_positive)
     def as_mult(self):
         base = self.one
-        exp = int(self.two.value)
-        result = base
-        for _ in range(exp - 1):
-            result = Mult(deepcopy(base), result)
-        self.replace(result)
+        new_exp = Number(self.two.value - 1)
+        if new_exp.value == 1: self.replace(Mult(deepcopy(base), deepcopy(base)))
+        else: self.replace(Mult(deepcopy(base), Pow(deepcopy(base), new_exp)))
 
     @action('перенос степени в знаменатель')
     def as_div(self): self.replace(Div(Number.ONE, Pow(self.one, UnaryMinus(self.two))))
@@ -772,10 +765,10 @@ class Log(Prefix, Operator):
         yield log_begin
         yield self
         yield from self.one
+        yield log_end
         yield arg_begin
         yield from self.two
         yield arg_end
-        yield log_end
 
     @action('разложить логарифм произведения', lambda self: isinstance(self.two, Mult))
     def arg_mult_to_pluse(self): 
