@@ -17,14 +17,15 @@ FONT_SIZE = 30
 CHAR_WIDTH = 31
 CHAR_HEIGHT = 61
 
-def create_token_texture(token: tokens.VisibleToken, 
-                         color: arcade.Color = WHITE, 
-                         font_size: float = 1) -> arcade.Texture:
-    text = str(token)
-    sprite = arcade.create_text_sprite(text, 
-                                       color, 
-                                       FONT_SIZE * font_size, 
-                                       font_name=FONT_NAME)
+def create_token_texture(
+        token: tokens.VisibleToken, 
+        color: arcade.Color = WHITE, 
+        font_size: float = 1) -> arcade.Texture:
+    sprite = arcade.create_text_sprite(
+        str(token), 
+        color, 
+        FONT_SIZE * font_size, 
+        font_name=FONT_NAME)
     return sprite.texture
 
 def create_line_texture(width: int, 

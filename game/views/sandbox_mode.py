@@ -5,10 +5,12 @@ from game import graphics
 from mechanics import nodes, tokens, parse
 from copy import deepcopy
 
+######################################## Основные Классы ########################################
+
 class SandboxMode(BaseMode):
     def __init__(self):
         super().__init__()
-        string = 'x * x * x'
+        string = 'log(3, 4) ^ (34 * 44)'
         self.expression = ExpressionPanel(self.ui, parse.create_tree(string))
         anchor = arcade.UIAnchorLayout()
         anchor.add(self.expression, anchor_x='center', anchor_y='center')
@@ -24,7 +26,7 @@ class ExpressionPanel(arcade.UIBoxLayout):
         self.ui = ui
         self.root = root
         self.font_size = font_size
-        self.main_panel = main_panel if main_panel is not None else self
+        self.main_panel = main_panel or self
         self.build()
 
     def build(self):
@@ -32,71 +34,26 @@ class ExpressionPanel(arcade.UIBoxLayout):
         main_build(self, self.root, self.font_size)
         self.do_layout()
 
-def main_build(panel: ExpressionPanel, 
-               root: nodes.Node, 
-               font_size: float):
-    i = 0
-    toks  = list(root)
-    lenth = len(toks)
-    while i < lenth:
-        token = toks[i]
-        if isinstance(token, tokens.VisibleToken):
-            if isinstance(token, tokens.Bracket):
-                panel.add(arcade.UIImage(
-                    texture=graphics.create_token_texture(
-                        token, 
-                        graphics.YELLOW, 
-                        font_size)))
-            elif isinstance(token, nodes.Node):
-                panel.add(NodeButton(panel, token, font_size))
-        elif isinstance(token, tokens.NestedBeginToken):
-            operator = token.operator
-            NESTED_OPERATORS[type(operator)](panel, operator, font_size)
-            i = toks.index(token.pair) 
-        i+=1
-
-def log_build(panel: ExpressionPanel, root: nodes.Log, font_size: float):    
-    log = arcade.UIBoxLayout(vertical=False, space_between=5)
-    log_btn = NodeButton(panel, root, font_size)
-    base_panel = ExpressionPanel(panel.ui, root.one, font_size * 0.6, panel.main_panel)
-    anchor = arcade.UIAnchorLayout(size_hint=(0, 1))
-    anchor.add(base_panel, anchor_x='center', anchor_y='bottom')
-    log.add(log_btn)
-    log.add(anchor)
-    panel.add(log)
-
-def div_build(panel: ExpressionPanel, root: nodes.Div, font_size: float):
-    fraction = arcade.UIBoxLayout(vertical=True, space_between=2)
-    fraction.size_hint = (1, 1)
-    numerator = ExpressionPanel(panel.ui, root.one, font_size * 0.8, panel.main_panel)
-    denominator = ExpressionPanel(panel.ui, root.two, font_size * 0.8, panel.main_panel)
-
-    line_texture = graphics.create_line_texture(1, 5 * 0.8, arcade.color.WHITE)
-    line_button = NodeButton(panel, root, font_size_or_texture=line_texture)
-    line_button.size_hint = (1, None)
-
-    fraction.add(numerator)
-    fraction.add(line_button)
-    fraction.add(denominator)
-    panel.add(fraction)
-
-def pow_build(panel: ExpressionPanel, root: nodes.Pow, font_size: float):
-    pow = arcade.UIBoxLayout(vertical=False, space_between=2)
-    pow_btn = NodeButton(panel, root, font_size * 0.6)
-    base_panel = ExpressionPanel(panel.ui, root.one, font_size, panel.main_panel)
-    exp_panel = ExpressionPanel(panel.ui, root.two, font_size * 0.6, panel.main_panel)
-    anchor = arcade.UIAnchorLayout(size_hint=(0, 1))
-    anchor.add(exp_panel, anchor_x='left', anchor_y='top')
-    anchor.add(pow_btn, anchor_x='right', anchor_y='top')
-    pow.add(base_panel)
-    pow.add(anchor)
-    panel.add(pow)
-
-NESTED_OPERATORS: dict[type[nodes.Operator], function] = {    
-    nodes.Log : log_build,
-    nodes.Div : div_build,
-    nodes.Pow : pow_build
-}
+class NodeButton(arcade.UITextureButton):
+    def __init__(self, 
+                 panel: ExpressionPanel, 
+                 node: nodes.Node, 
+                 font_size_or_texture: float | arcade.Texture = 1):
+        if isinstance(font_size_or_texture, arcade.Texture): super().__init__(texture=font_size_or_texture)
+        else: super().__init__(texture=graphics.create_token_texture(node, graphics.WHITE, font_size_or_texture)) 
+        self.panel = panel
+        self.node = node
+        self.interaction_buttons = (arcade.MOUSE_BUTTON_LEFT, arcade.MOUSE_BUTTON_RIGHT)
+        
+    def on_click(self, event):
+        match event.button:
+            case arcade.MOUSE_BUTTON_LEFT: 
+                if isinstance(self.node, nodes.Operator):
+                    self.node.work(self.node)
+                    self.panel.main_panel.build()
+            case arcade.MOUSE_BUTTON_RIGHT:
+                if self.node.actions: 
+                    self.panel.ui.add(ActionMenu(self.panel, self.node, event.x, event.y))
 
 class ActionMenu(arcade.UIMouseFilterMixin, arcade.UIBoxLayout):
     def __init__(self, panel: ExpressionPanel, node: nodes.Node, x: int, y: int):
@@ -118,24 +75,71 @@ class ActionMenu(arcade.UIMouseFilterMixin, arcade.UIBoxLayout):
             return True
         return super().on_event(event)
 
-class NodeButton(arcade.UITextureButton):
-    def __init__(self, 
-                 panel: ExpressionPanel, 
-                 node: nodes.Node, 
-                 font_size_or_texture: float | arcade.Texture = 1):
-        if isinstance(font_size_or_texture, arcade.Texture): 
-            super().__init__(texture=font_size_or_texture)
-        else: super().__init__(texture=graphics.create_token_texture(node, graphics.WHITE, font_size_or_texture)) 
-        self.panel = panel
-        self.node = node
-        self.interaction_buttons = (arcade.MOUSE_BUTTON_LEFT, arcade.MOUSE_BUTTON_RIGHT)
-        
-    def on_click(self, event):
-        match event.button:
-            case arcade.MOUSE_BUTTON_LEFT: 
-                if isinstance(self.node, nodes.Operator):
-                    self.node.work(self.node)
-                    self.panel.main_panel.build()
-            case arcade.MOUSE_BUTTON_RIGHT:
-                if self.node.actions:
-                    self.panel.ui.add(ActionMenu(self.panel, self.node, event.x, event.y))
+def main_build(panel: ExpressionPanel, root: nodes.Node, font_size: float):
+    i = 0
+    toks  = list(root)
+    lenth = len(toks)
+    while i < lenth:
+        token = toks[i]
+        if isinstance(token, tokens.VisibleToken):
+            if isinstance(token, tokens.Bracket):
+                bracket = arcade.UIImage(
+                        texture=graphics.create_token_texture(
+                            token, 
+                            graphics.YELLOW, 
+                            font_size))
+                panel.add(bracket)
+            elif isinstance(token, nodes.Node):
+                panel.add(NodeButton(panel, token, font_size))
+        elif isinstance(token, tokens.NestedBeginToken):
+            operator = token.operator
+            NESTED_OPERATORS[type(operator)](panel, operator, font_size)
+            i = toks.index(token.pair)
+        i+=1
+
+def log_build(panel: ExpressionPanel, root: nodes.Log, font_size: float):
+    grid = arcade.UIGridLayout(
+        column_count=2,
+        row_count=2,
+        horizontal_spacing=5,
+        vertical_spacing=2)
+    log_btn = NodeButton(panel, root, font_size)
+    base_panel = ExpressionPanel(panel.ui, root.one, font_size * 0.6, panel.main_panel)
+    grid.add(log_btn, column=0, row=0, row_span=2)
+    grid.add(base_panel, column=1, row=1)
+    panel.add(grid)
+
+def div_build(panel: ExpressionPanel, root: nodes.Div, font_size: float):
+    fraction = arcade.UIBoxLayout(vertical=True, space_between=5)
+    numerator = ExpressionPanel(panel.ui, root.one, font_size * 0.8, panel.main_panel)
+    denominator = ExpressionPanel(panel.ui, root.two, font_size * 0.8, panel.main_panel)
+    line_texture = graphics.create_line_texture(1, 5 * font_size, arcade.color.WHITE)
+    line_button = NodeButton(panel, root, font_size_or_texture=line_texture)
+    line_button.size_hint = (1, None)
+    fraction.add(numerator)
+    fraction.add(line_button)
+    fraction.add(denominator)
+    panel.add(fraction)
+
+def pow_build(panel: ExpressionPanel, root: nodes.Pow, font_size: float):
+    grid = arcade.UIGridLayout(
+        column_count=2,
+        row_count=2,
+        horizontal_spacing=5,
+        vertical_spacing=2)
+    top_right = arcade.UIBoxLayout(vertical=False, space_between=2)
+    pow_btn = NodeButton(panel, root, font_size * 0.6)
+    exp_panel = ExpressionPanel(panel.ui, root.two, font_size * 0.6, panel.main_panel)
+    top_right.add(pow_btn)
+    top_right.add(exp_panel)
+    base_panel = ExpressionPanel(panel.ui, root.one, font_size, panel.main_panel)
+    grid.add(base_panel, column=0, row=0, row_span=2)
+    grid.add(top_right, column=1, row=0)
+    panel.add(grid)
+
+NESTED_OPERATORS: dict[type[nodes.Operator], function] = {    
+    nodes.Log : log_build,
+    nodes.Div : div_build,
+    nodes.Pow : pow_build
+}
+

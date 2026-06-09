@@ -190,8 +190,10 @@ class Number(Value):
     def is_integer(self)-> bool: return self.value.is_integer()
 
     def __str__(self) -> str:
-        if self.value.is_integer(): return str(int(self.value))
-        else: return str(self.value)
+        if self.is_integer(): s = str(int(self.value))
+        else: s = str(self.value)
+        if len(s) > 5: return s[:5] + '...'
+        return s
 
     def __add__(self, other):
         if isinstance(other, Number):
