@@ -10,7 +10,7 @@ from copy import deepcopy
 class SandboxMode(BaseMode):
     def __init__(self):
         super().__init__()
-        string = 'log(3, 4) ^ (34 * 44)'
+        string = '(x * x) / (2 + 4 + x)'
         self.expression = ExpressionPanel(self.ui, parse.create_tree(string))
         anchor = arcade.UIAnchorLayout()
         anchor.add(self.expression, anchor_x='center', anchor_y='center')
@@ -104,7 +104,7 @@ def log_build(panel: ExpressionPanel, root: nodes.Log, font_size: float):
         horizontal_spacing=5,
         vertical_spacing=2)
     log_btn = NodeButton(panel, root, font_size)
-    base_panel = ExpressionPanel(panel.ui, root.one, font_size * 0.6, panel.main_panel)
+    base_panel = ExpressionPanel(panel.ui, root.one, font_size * 0.8, panel.main_panel)
     grid.add(log_btn, column=0, row=0, row_span=2)
     grid.add(base_panel, column=1, row=1)
     panel.add(grid)
@@ -128,8 +128,8 @@ def pow_build(panel: ExpressionPanel, root: nodes.Pow, font_size: float):
         horizontal_spacing=5,
         vertical_spacing=2)
     top_right = arcade.UIBoxLayout(vertical=False, space_between=2)
-    pow_btn = NodeButton(panel, root, font_size * 0.6)
-    exp_panel = ExpressionPanel(panel.ui, root.two, font_size * 0.6, panel.main_panel)
+    pow_btn = NodeButton(panel, root, font_size * 0.8)
+    exp_panel = ExpressionPanel(panel.ui, root.two, font_size * 0.8, panel.main_panel)
     top_right.add(pow_btn)
     top_right.add(exp_panel)
     base_panel = ExpressionPanel(panel.ui, root.one, font_size, panel.main_panel)

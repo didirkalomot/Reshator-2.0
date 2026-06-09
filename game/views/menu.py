@@ -3,7 +3,7 @@
 from game import arcade_import as arcade
 from game import graphics
 from game.views.sandbox_mode import SandboxMode
-from game.views.mode2 import Mode2
+from game.views.learning import learning
 from game.views.base_mode import BaseMode
 
 BUTTON_MODE_WIDTH = 200
@@ -11,13 +11,12 @@ BUTTON_MODE_HEIGHT = 50
 
 class Menu(arcade.UIView):
     MODES = [
+        (learning, 'Обучение'),
         (SandboxMode, 'Песочница'),
-        (Mode2, 'Режим 2'),
         (BaseMode, 'Режим 3'),
-        (BaseMode, 'Режим 4'),
+        (BaseMode, 'Режим 4')]
         # следующий режим
-    ]
-    
+        
     def __init__(self):
         super().__init__()
         self.background_color = graphics.BLACKBOARD
