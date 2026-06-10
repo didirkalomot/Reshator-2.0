@@ -1,5 +1,5 @@
 from game import arcade_import as arcade
-from game.views.base_mode import BaseMode
+from game.views.base import BaseMode
 from game import graphics
 
 class GifWidget(arcade.UIWidget):

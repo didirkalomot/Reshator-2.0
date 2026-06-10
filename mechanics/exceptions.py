@@ -1,27 +1,28 @@
-class Good(Exception):pass
+class MyException(Exception):
+    HEADER: str = None
 
-class Bad(Exception):
-    def __init__(self, current, damage):
-        self.current = current
-        self.damage = damage
+    def __init__(self, message: str): self.message = message
 
-class UnknownVariable(Bad):
-    def __int__(self, current):
-        super().__init__(current, 1)
+    def __str__(self): return f'{self.__class__.HEADER}\n{self.message}' 
 
-    def __str__(self):
-        return 'один из операндов - неизвестная переменная'
-    
-class WrongPriority(Bad):
-    def __init__(self, current):
-        super().__init__(current, 1)
+class SystemException(MyException): pass
 
-    def __str__(self):
-        return 'не тот порядок действий'
-    
-class NoCommutativity(Bad):
-    def __init__(self, current):
-        super().__init__(current, 2)
+class ParseError(SystemException):
+    HEADER = 'Не корректное выражение:'
 
-    def __str__(self):
-        return 'у этого элемента нет коммутативности'
+    def __init__(self, string: str):
+        super().__init__(string)
+
+class GameplayException(MyException): pass
+
+class Good(GameplayException):
+    HEADER = 'Успешное действие:'
+
+    def __init__(self, action_name: str):
+        super().__init__(self, action_name)
+
+class Bad(GameplayException):
+    HEADER = 'Неправильное действие:'
+
+    def __init__(self, action_name: str):
+        super().__init__(self, action_name)

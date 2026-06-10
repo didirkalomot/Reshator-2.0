@@ -2,18 +2,19 @@
 
 from game import arcade_import as arcade
 from game import graphics
-from game.views.sandbox_mode import SandboxMode
 from game.views.learning_mode import learning
-from game.views.base_mode import BaseMode
+from game.views.sandbox_mode import SandboxMode
+from game.views.quadratic_equation_mode import QuadraticEquationMode
+from game.views.base import BaseMode
 
-BUTTON_MODE_WIDTH = 200
-BUTTON_MODE_HEIGHT = 50
+BUTTON_MODE_WIDTH = 320
+BUTTON_MODE_HEIGHT = 60
 
 class Menu(arcade.UIView):
     MODES = [
         (learning, 'Обучение'),
         (SandboxMode, 'Песочница'),
-        (BaseMode, 'Режим 3'),
+        (QuadraticEquationMode, 'Квадратное Уравнение'),
         (BaseMode, 'Режим 4')]
         # следующий режим
         
@@ -34,7 +35,11 @@ class Menu(arcade.UIView):
         # Область прокрутки
         scroll = arcade.UIScrollArea(width=700, height=400)
         scroll.add(self.build_modes_grid())
-        anchor.add(scroll, anchor_x='center', align_x=140, anchor_y='center', align_y=-70)
+        anchor.add(scroll, 
+                   anchor_x='center', 
+                   align_x = 0, 
+                   anchor_y='center', 
+                   align_y=-70)
         
         # Кнопка выхода
         exit_btn = arcade.UIFlatButton(text='Выход', width=200, height=50, style=graphics.BUTTON_UI_STYLE)

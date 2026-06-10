@@ -36,28 +36,28 @@ def create_line_texture(width: int,
 
 BUTTON_ACTION_MENU_STYLE = {
     "normal": arcade.UIFlatButton.UIStyle(
-        font_size=12,
+        font_size=8,
         font_name=FONT_NAME,
         font_color=GREY,
         bg=WHITE,
         border=BLACK,
         border_width=1),
     "hover": arcade.UIFlatButton.UIStyle(
-        font_size=12,
+        font_size=8,
         font_name=FONT_NAME,
         font_color=VIOLET,
         bg=WHITE,
         border=BLACK,
         border_width=1),
     "press": arcade.UIFlatButton.UIStyle(
-        font_size=12,
+        font_size=8,
         font_name=FONT_NAME,
         font_color=VIOLET,
         bg=VIOLET,
         border=BLACK,
         border_width=1),
     "disabled": arcade.UIFlatButton.UIStyle(
-        font_size=12,
+        font_size=8,
         font_name=FONT_NAME,
         font_color=WHITE,
         bg=GREY,

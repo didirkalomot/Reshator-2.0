@@ -1,7 +1,11 @@
 from mechanics import nodes
+from mechanics import exceptions 
+import random
 #import nodes
 
-operations : dict[str : type[nodes.Operator]] = {
+######################################## Словарь Символов И Их Операторов ########################################
+
+operators : dict[str : type[nodes.Operator]] = {
     '^' : nodes.Pow,
     '~' : nodes.UnaryMinus,
     '*' : nodes.Mult,
@@ -16,12 +20,14 @@ operations : dict[str : type[nodes.Operator]] = {
     '=' : nodes.Equal
 }
 
-operations_sorted = sorted(operations.keys(), key=len, reverse=True)
-fist_chars_operations = {op[0] for op in operations.keys()}
-unary_context = set(operations.keys()) | {'('}
+######################################## Вспомогательная Часть ########################################
+
+operators_sorted = sorted(operators.keys(), key=len, reverse=True)
+fist_chars_operators = {op[0] for op in operators.keys()}
+unary_context = set(operators.keys()) | {'('}
 
 def is_operator(token) -> bool:
-    return token in operations
+    return token in operators
 
 def is_number(string: str) -> bool:
     try: float(string); return True
@@ -31,7 +37,7 @@ def is_letter(string: str) -> bool:
     if not string[0].isalpha(): return False
     for char in string: 
         if not (char.isalnum()): return False
-    if string in operations: return False
+    if string in operators: return False
     return True
 
 def remove_bracfast(string: str) -> str:
@@ -72,6 +78,7 @@ def wrap_unary_minus(expr: str) -> str:
         i += 1
     return ''.join(result)
 
+######################################## Поиск Последнего Оператора ########################################
 
 def find_last_operation(string: str):
     candidates = []
@@ -83,10 +90,10 @@ def find_last_operation(string: str):
         char = string[i]
         if char == '(': balance += 1; i += 1; continue
         elif char == ')': balance -= 1; i += 1; continue        
-        if char not in fist_chars_operations: i += 1; continue
+        if char not in fist_chars_operators: i += 1; continue
 
         symbol = None; symbol_length = 0
-        for op in operations_sorted:
+        for op in operators_sorted:
             if string.startswith(op, i):
                 if len(op) > 1:
                     if i > 0 and string[i-1].isalnum():
@@ -100,7 +107,7 @@ def find_last_operation(string: str):
             
         if symbol:
             if balance == 0:
-                candidates.append((i, symbol, operations[symbol].PRIORITY))
+                candidates.append((i, symbol, operators[symbol].PRIORITY))
             i += symbol_length 
         else: i += 1
 
@@ -109,10 +116,12 @@ def find_last_operation(string: str):
     max_priority = max(c[2] for c in candidates)
     candidates = [(pos, sym) for pos, sym, pri in candidates if pri == max_priority]
 
-    cls = operations[candidates[0][1]]
+    cls = operators[candidates[0][1]]
 
     if issubclass(cls, nodes.Infix) and not cls.ASSOCIATIVITY_LEFT: return candidates[0]
     else: return candidates[-1]
+
+######################################## Перевод Из Инфиксной Записи В Префиксную ########################################
     
 def infix_to_prefix(string: str) -> str:
     def recursive_infix_to_prefix(string: str) -> str: 
@@ -123,7 +132,7 @@ def infix_to_prefix(string: str) -> str:
             if result is None: raise ValueError(f'не корректная строка {string}')
             
             position, symbol = result
-            cls = operations[symbol]
+            cls = operators[symbol]
 
             if issubclass(cls, nodes.Prefix):
                 remaining = string[position + len(symbol):]
@@ -166,6 +175,8 @@ def infix_to_prefix(string: str) -> str:
     string = wrap_unary_minus(string.replace(' ', ''))
     return recursive_infix_to_prefix(string)
 
+######################################## Создание Дерева Из Префиксной Записи ########################################
+
 def prefix_to_tree(string: str) -> nodes.Node:
     string = string.replace(' ', '')
     stack = []
@@ -187,16 +198,69 @@ def prefix_to_tree(string: str) -> nodes.Node:
             while stack and stack[-1] != '(': args.append(stack.pop())
             stack.pop()
             op_name = stack.pop()
-            node = operations[op_name](*reversed(args))
+            node = operators[op_name](*reversed(args))
             stack.append(node)
         elif token == ',': 
             continue
         else:
-            if token in operations: stack.append(token)
+            if token in operators: stack.append(token)
             elif is_number(token): stack.append(nodes.Number(float(token)))
             elif is_letter(token): stack.append(nodes.Letter(token))
             else: raise ValueError(f'неизвестный токен: {token}')
     if len(stack) != 1: raise ValueError(f'недопустимое выражение')
     return stack[0]
 
-def create_tree(string: str) -> nodes.Node: return prefix_to_tree(infix_to_prefix(string))
+######################################## Финальная Функция Генерации Дерева По Строке ########################################
+
+def create_tree(string: str) -> nodes.Node: 
+    try: return prefix_to_tree(infix_to_prefix(string))
+    except: raise exceptions.ParseError(string)
+
+######################################## Случайная Генерация Строки Примера ########################################
+
+all_ops = list(operators.keys())
+nest_ops = [op for op in all_ops if op != '=']
+
+def random_expression(max_depth=3, prob_term=0.3, num_range=(-100, 100), variables=('x', 'y')):
+    all_ops = list(operators.keys())
+    nest_ops = [op for op in all_ops if op != '=']
+
+    def _term():
+        if random.random() < 0.7:
+            return nodes.Number(random.randint(*num_range))
+        else:
+            return nodes.Letter(random.choice(variables))
+
+    # Генерация положительного числа для логарифма
+    def _positive_number():
+        # от 2 до 100, исключая 1
+        return nodes.Number(random.randint(2, 100))
+
+    def _generate(depth):
+        if depth >= max_depth or (depth > 0 and random.random() < prob_term):
+            return _term()
+
+        ops = all_ops if depth == 0 else nest_ops
+        op_symbol = random.choice(ops)
+        op_class = operators[op_symbol]
+        arity = op_class.ARITY
+
+        # Специальная обработка для log
+        if op_symbol == 'log':
+            # Для логарифма аргументы должны быть положительными
+            # Основание: от 2 до 100, аргумент: от 2 до 100
+            base = _positive_number()
+            arg = _positive_number()
+            # Можно также использовать рекурсию, но ограничить генерацию только числами
+            # Но для простоты используем числа
+            return op_class(base, arg)
+
+        if arity == 1:
+            arg = _generate(depth + 1)
+            return op_class(arg)
+        else:  # arity == 2
+            left = _generate(depth + 1)
+            right = _generate(depth + 1)
+            return op_class(left, right)
+
+    return _generate(0)

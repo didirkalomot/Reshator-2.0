@@ -164,7 +164,10 @@ class Node(Actionable, tokens.VisibleToken):
         parent = self.parent
         return isinstance(parent, Factorable) and isinstance(parent.parent, Equal)
     @action('перенести за равно', parent_is_factorable_and_grand_is_equal)
-    def transfer_via_equals(self): self.parent.parent.transfer(self)
+    def transfer_grandson_via_equals(self): self.parent.parent.transfer_grandson(self)
+
+    @action('перенести за равно', lambda self: isinstance(self.parent, Equal))
+    def transfer_child_via_equals(self): self.parent.transfer_child(self)
          
 ######################################## Классы Для Значений ########################################
 
@@ -188,9 +191,15 @@ class Value(Node):
         result.value = deepcopy(self.value, memo)
         return result
     
+    @action('заменить выражением', interactive=True)
+    def as_expression(self, node: Node): 
+        if self == node: self.replace(node)
+    
 class Number(Value):
     ONE = None
     ZERO = None
+    E = None
+    PI = None
 
     def __init__(self, value: float): super().__init__(value)
 
@@ -263,6 +272,8 @@ class Number(Value):
 
 Number.ZERO = Number(0)
 Number.ONE = Number(1)
+Number.E = Number(math.e)
+Number.PI = Number(math.pi)
 
 class Letter(Value):
     def __init__(self, value: str):
@@ -343,7 +354,7 @@ class Operator(Node):
             if i == len(self.operands) - 1: oper.print_tree(prefix + '└── ')
             else: oper.print_tree(prefix + '├── ')
 
-    #def is_child(self, node: Node) -> bool: return any(operand is node for operand in self.operands)
+    def is_child(self, node: Node) -> bool: return node in self.operands
 
     def result(self) -> Value: return NotImplemented
 
@@ -851,7 +862,7 @@ class Equal(Commutative, Infix, Operator):
 
     def __str__(self): return "="
 
-    def transfer(self, node: Node):        
+    def transfer_grandson(self, node: Node):        
         parent = node.parent
         grand = parent.parent
         if isinstance(parent, Factorable) and grand is self:            
@@ -864,6 +875,16 @@ class Equal(Commutative, Infix, Operator):
                 grand.two = other
                 grand.one = Plus(UnaryMinus(node), self.one) 
 
+    def transfer_child(self, node: Node):
+        if self.is_child(node):
+            other = self.other_operand(node)
+            if node is self.one:
+                self.one = Number.ZERO
+                self.two = Plus(UnaryMinus(node), other)
+            else:
+                self.two = Number.ZERO
+                self.one = BinaryMinus(other, node)
+
     @action('поменять левую и правую части')
     def swap_left_and_right(self): super().commutative(self)
 
@@ -871,3 +892,13 @@ class Equal(Commutative, Infix, Operator):
     def multiply_by_minus_one(self):
         self.one = UnaryMinus(self.one)
         self.two = UnaryMinus(self.two)
+
+    @action('умножить обе части', interactive=True)
+    def multiply_both_sides(self, multiplier: Node):
+        self.one = Mult(self.one, multiplier)
+        self.two = Mult(self.two, multiplier)
+
+    @action('прибавить к обоим частям', interactive=True)
+    def add_both_sides(self, addend: Node):
+        self.one = Plus(self.one, addend)
+        self.two = Plus(self.two, addend)
