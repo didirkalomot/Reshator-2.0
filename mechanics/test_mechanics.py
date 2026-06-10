@@ -2,10 +2,9 @@ import nodes
 import parse
 import exceptions
 
-root = parse.create_tree('- 3 + 4 + 5 - 3 - 5')
-for t in root:
-    print(str(t), end=' ')
-print('ff')
+root1 = parse.create_tree('4 + 2')
+root2 = parse.create_tree('6')
 
-root.print_tree()
+print(root1 == root2)
+
 

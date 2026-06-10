@@ -3,7 +3,7 @@
 from game import arcade_import as arcade
 from game import graphics
 from game.views.sandbox_mode import SandboxMode
-from game.views.learning import learning
+from game.views.learning_mode import learning
 from game.views.base_mode import BaseMode
 
 BUTTON_MODE_WIDTH = 200

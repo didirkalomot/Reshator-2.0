@@ -10,7 +10,7 @@ from copy import deepcopy
 class SandboxMode(BaseMode):
     def __init__(self):
         super().__init__()
-        string = '(x * x) / (2 + 4 + x)'
+        string = 'log(34, 5) ^ (34 * 4)'
         self.expression = ExpressionPanel(self.ui, parse.create_tree(string))
         anchor = arcade.UIAnchorLayout()
         anchor.add(self.expression, anchor_x='center', anchor_y='center')

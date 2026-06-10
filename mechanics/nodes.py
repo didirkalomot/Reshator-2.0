@@ -95,10 +95,19 @@ class Node(Actionable, tokens.VisibleToken):
         result = cls.__new__(cls)
         result.parent = None
         return result
+    
+    def simplify(self): return self
 
-    def __eq__(self, other): return type(self) == type(other) and self._equals(other)
+    def __eq__(self, other):
+        if not isinstance(other, Node): return False
+        left = self.simplify()
+        right = other.simplify()
+        if type(left) != type(right): return False
+        return left._equals(right)
 
-    def _equals(self, other: Node): raise NotImplementedError()
+    def _equals(self, other: Node) -> bool: raise NotImplementedError()
+
+    def __ne__(self, other) -> bool: return not self == other
 
     def replace(self, new):
         if self.parent is not None:
@@ -173,8 +182,6 @@ class Value(Node):
     def _equals(self, other: Value): return self.value == other.value
     
     def __hash__(self): return hash((self.__class__, self.value))
-    
-    def __ne__(self, other): return not self == other
 
     def __deepcopy__(self, memo=None):
         result = super().__deepcopy__(memo)
@@ -303,7 +310,14 @@ class Operator(Node):
         else: return self.__class__.Arity
 
     @cached_property
-    def priority(self) -> int: return self.__class__.PRIORITY   
+    def priority(self) -> int: return self.__class__.PRIORITY  
+
+    def simplify(self) -> Node:
+        simplified_operands = [op.simplify() for op in self.operands]
+        candidate = type(self)(*simplified_operands)
+        res = candidate.result()
+        if res is not NotImplemented: return res
+        return candidate 
         
     def _equals(self, other: Operator):
         if len(self.operands) != len(other.operands): return False
@@ -336,13 +350,6 @@ class Operator(Node):
     @action('выполнить', lambda self: self.result() is not NotImplemented)
     def work(self): 
         if (result := self.result()) is not NotImplemented: self.replace(result) 
-
-    def solve(self) -> Node:
-        copy = deepcopy(self)
-        for op in copy.operands:
-            if isinstance(op, Operator): op.solve()
-        self.work()
-        return copy
 
 ######################################## Миксины Для Операторов ########################################
 
@@ -452,8 +459,8 @@ class Associative(Actionable): # Infix
         return isinstance(self.one, self.__class__) != isinstance(self.two, self.__class__)
     @action('ассоциативность', only_one_operand_is_self_class)
     def associative(self):
-        if isinstance(self.one, self.__class__):  self.associative_right()
-        else: self.associative_left()
+        if isinstance(self.one, self.__class__):  self.associative_right(self)
+        else: self.associative_left(self)
         
     def to_list(self) -> list[Node]:
         operands = []
