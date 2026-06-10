@@ -9,10 +9,14 @@ from mechanics import tokens
 ######################################## Классы Для Системы Действий ########################################
 
 class Action:
-    def __init__(self, func, name, condition = None, interactive = False):
-        self.name = name
-        self.condition = condition
-        self.interactive = interactive
+    def __init__(self, 
+                 func: function, 
+                 name: str, 
+                 condition: function = None, 
+                 interactive: bool = False):
+        self.name: str = name
+        self.condition: function = condition
+        self.interactive: bool = interactive
         self._func = func
 
     def __call__(self, node, arg_node=None):
@@ -34,6 +38,14 @@ class Actionable:
                 if issubclass(base, Actionable):
                     cls.ACTIONS += base.ACTIONS
 
+    @property
+    def actions(self) -> tuple[Action, ...]:
+        available_actions = []
+        for func in self.__class__.ACTIONS:
+            if func.condition is None or func.condition(self):
+                available_actions.append(func)
+        return tuple(available_actions)
+
 def action(name: str, condition: function = None, interactive = False):
     def decorator(func):
         action_func = Action(func, name, condition, interactive)
@@ -43,13 +55,6 @@ def action(name: str, condition: function = None, interactive = False):
 ######################################## Основной Класс Узла ########################################
 
 class Node(Actionable, tokens.VisibleToken):
-    @property
-    def actions(self) -> tuple[Action, ...]:
-        available_actions = []
-        for func in self.__class__.ACTIONS:
-            if func.condition is None or func.condition(self):
-                available_actions.append(func)
-        return tuple(available_actions)
 
     __slots__ = ['parent']
 
@@ -664,7 +669,7 @@ class Div(Infix, Operator):
         yield div_begin
         yield from self.one
         yield self
-        yield from self.two      
+        yield from self.two   
         yield div_end
 
     @action('раскрыть числитель', lambda self: isinstance(self.one, Factorable))
