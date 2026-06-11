@@ -49,6 +49,8 @@ class BracketFactory:
 brackets = BracketFactory(OrderBracketLeftToken, OrderBracketRightToken)
 function_brackets = BracketFactory(FunctionBracketLeftToken, FunctionBracketRightToken)
 
+####################################### Фабрика Токенов Вложения #######################################
+
 class NestedFactory(BracketFactory):
     def __init__(self, left_cls, right_cls):
         super().__init__(left_cls, right_cls)
@@ -59,7 +61,3 @@ class NestedFactory(BracketFactory):
         return left, right
 
 nested_bounds = NestedFactory(NestedBeginToken, NestedEndToken)
-
-####################################### Токен Конца Оператора #######################################
-
-class EndToken(Token): pass

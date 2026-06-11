@@ -62,7 +62,7 @@ class Node(Actionable, tokens.VisibleToken):
         super().__init__()
         self.parent: Operator | None = None
 
-    def __iter__(self): raise NotImplementedError()
+    def __iter__(self): yield self
 
     def __getitem__(self, key) -> Node | str: return list(iter(self))[key]
 
@@ -184,8 +184,6 @@ class Value(Node):
         super().__init__()
 
     def __str__(self) -> str: return 'value'
-
-    def __iter__(self): yield self
 
     def _equals(self, other: Value): return self.value == other.value
     
@@ -410,7 +408,7 @@ class Infix:
     @cached_property
     def associativity_left(self) -> bool: return self.__class__.ASSOCIATIVITY_LEFT
 
-    def _needs_parentheses(self, child: Node, is_left: bool) -> bool:
+    def _needs_brackets(self, child: Node, is_left: bool) -> bool:
         if not isinstance(child, Operator): return False
         if child.priority >= self.priority: return True
         #if child.priority == self.priority:
@@ -428,9 +426,9 @@ class Infix:
                 yield right_bracket
             else: yield from operand
 
-        yield from wrap(left, self._needs_parentheses(left, True))
+        yield from wrap(left, self._needs_brackets(left, True))
         yield self
-        yield from wrap(right, self._needs_parentheses(right, False))
+        yield from wrap(right, self._needs_brackets(right, False))
 
     def other_operand(self, node: Node) -> Node:
         if not self.is_child(node): raise ValueError()
