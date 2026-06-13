@@ -12,6 +12,9 @@ GREY = arcade.Color(150, 150, 150)
 WHITE = arcade.color.WHITE
 BLACK = arcade.color.BLACK
 
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+
 FONT_NAME = 'Better VCR'
 FONT_SIZE = 30
 CHAR_WIDTH = 31
@@ -36,28 +39,28 @@ def create_line_texture(width: int,
 
 BUTTON_ACTION_MENU_STYLE = {
     "normal": arcade.UIFlatButton.UIStyle(
-        font_size=8,
+        font_size=10,
         font_name=FONT_NAME,
         font_color=GREY,
         bg=WHITE,
         border=BLACK,
         border_width=1),
     "hover": arcade.UIFlatButton.UIStyle(
-        font_size=8,
+        font_size=10,
         font_name=FONT_NAME,
         font_color=VIOLET,
         bg=WHITE,
         border=BLACK,
         border_width=1),
     "press": arcade.UIFlatButton.UIStyle(
-        font_size=8,
+        font_size=10,
         font_name=FONT_NAME,
         font_color=VIOLET,
         bg=VIOLET,
         border=BLACK,
         border_width=1),
     "disabled": arcade.UIFlatButton.UIStyle(
-        font_size=8,
+        font_size=10,
         font_name=FONT_NAME,
         font_color=WHITE,
         bg=GREY,

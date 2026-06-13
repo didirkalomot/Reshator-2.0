@@ -33,18 +33,16 @@ class learning(BaseMode):
         self.background_color = graphics.VIOLET
         self.animated_widgets = []
 
-        anchor = self.ui.add(arcade.UIAnchorLayout())
-
         title = arcade.UILabel(
             text='Обучение',
             font_name=graphics.FONT_NAME,
             font_size=48,
             text_color=arcade.color.WHITE)
-        anchor.add(title, anchor_x='center', anchor_y='top', align_y=-30)
+        self.anchor.add(title, anchor_x='center', anchor_y='top', align_y=-30)
 
         scroll = arcade.UIScrollArea(width=800, height=500)
         scroll.add(self.build_tutorial_grid())
-        anchor.add(scroll, anchor_x='center', anchor_y='center', align_y=-70)
+        self.anchor.add(scroll, anchor_x='center', anchor_y='center', align_y=-70)
 
     def build_tutorial_grid(self):
         vertical_layout = arcade.UIBoxLayout(vertical=True, space_between=20)

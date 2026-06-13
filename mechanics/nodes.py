@@ -199,10 +199,10 @@ class Value(Node):
         if self == node: self.replace(node)
     
 class Number(Value):
-    ONE = None
-    ZERO = None
-    E = None
-    PI = None
+    ONE: Constant
+    ZERO: Constant
+    E: Constant
+    PI: Constant
 
     def __init__(self, value: float): super().__init__(value)
 
@@ -273,10 +273,18 @@ class Number(Value):
             return self.value <= other
         return NotImplemented
 
-Number.ZERO = Number(0)
-Number.ONE = Number(1)
-Number.E = Number(math.e)
-Number.PI = Number(math.pi)
+class Constant(Number):
+    def __init__(self, number: float, symbol: str = None):
+        super().__init__(number)
+        #if symbol: self.__str__ = lambda self: symbol
+        self.symbol = symbol
+
+    def  __str__(self): return self.symbol or super().str()
+
+Number.ZERO = Constant(0)
+Number.ONE = Constant(1)
+Number.E = Constant(math.e, 'e')
+Number.PI = Constant(math.pi, 'pi')
 
 class Letter(Value):
     def __init__(self, value: str):
@@ -721,6 +729,10 @@ class Pow(Infix, Operator):
     @action('перенос степени в знаменатель')
     def as_div(self): self.replace(Div(Number.ONE, Pow(self.one, UnaryMinus(self.two))))
 
+    @action('раскрыть умножение', lambda self: isinstance(self.one, Mult))
+    def mult_out(self): 
+        self.replace(Mult(Pow(self.one.one, self.two), Pow(self.one.two, deepcopy(self.two))))
+
     def result(self) -> Node:
         if self.two == Number.ONE: return self.one
         try: return self.one ** self.two
@@ -819,6 +831,12 @@ class Log(Prefix, Operator):
     def change_base(self, new_base: Node):
         self.replace(Div(Log(new_base, self.two), Log(new_base, self.one)))
 
+    @action('запись в виде lg', lambda self: self.one == 10)
+    def as_lg(self): self.replace(Lg(self.two))
+
+    @action('запись в виде ln', lambda self: self.one == Number.E)
+    def as_ln(self): self.replace(Ln(self.two))
+
     def result(self) -> Node:
         if self.one == self.two: return Number.ONE
         if self.two == Number.ONE: return Number.ZERO
@@ -840,17 +858,21 @@ class ConstBaseLog(Log): # вспомогательный класс
         yield from self.two
         yield arg_end
 
+    @action('запись в виде обычного логарифма')
+    def as_full_log(self):
+        self.replace(Log(self.one, self.two))
+
 class Lg(ConstBaseLog):
     ARITY = 1
     PRIORITY = 1    
-    BASE = Number(10)        
+    BASE = Number(10)  
 
     def __str__(self): return 'lg'
     
 class Ln(ConstBaseLog):
     ARITY = 1
     PRIORITY = 1    
-    BASE = Number(math.e)
+    BASE = Number.E
    
     def __str__(self): return 'ln'
   

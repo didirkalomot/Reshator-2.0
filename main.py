@@ -2,9 +2,7 @@
 
 import game.arcade_import as arcade
 from game.views.menu import Menu
-
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+from game.graphics import SCREEN_WIDTH, SCREEN_HEIGHT
 
 def main():
     window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, 'Решатор')

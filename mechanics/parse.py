@@ -20,18 +20,24 @@ operators : dict[str : type[nodes.Operator]] = {
     '=' : nodes.Equal
 }
 
+constants : dict[str : type[nodes.Number]] = {
+    'e' : nodes.Number.E,
+    'pi' : nodes.Number.PI
+}
+
 ######################################## Вспомогательная Часть ########################################
 
 operators_sorted = sorted(operators.keys(), key=len, reverse=True)
 fist_chars_operators = {op[0] for op in operators.keys()}
 unary_context = set(operators.keys()) | {'('}
 
-def is_operator(token) -> bool:
-    return token in operators
+def is_operator(token) -> bool: return token in operators
 
 def is_number(string: str) -> bool:
     try: float(string); return True
     except ValueError: return False
+
+def is_constant(string: str) -> bool: return string in constants
     
 def is_letter(string: str) -> bool:
     if not string[0].isalpha(): return False
@@ -204,6 +210,7 @@ def prefix_to_tree(string: str) -> nodes.Node:
             continue
         else:
             if token in operators: stack.append(token)
+            elif is_constant(token): stack.append(constants[token])
             elif is_number(token): stack.append(nodes.Number(float(token)))
             elif is_letter(token): stack.append(nodes.Letter(token))
             else: raise ValueError(f'неизвестный токен: {token}')

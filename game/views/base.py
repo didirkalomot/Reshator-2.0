@@ -10,68 +10,83 @@ class BaseMode(arcade.UIView):
     def __init__(self):
         super().__init__()
         self.background_color = graphics.BLACKBOARD
-        button = arcade.UIFlatButton(text="меню", width=100, style=graphics.BUTTON_UI_STYLE)
+        button = arcade.UIFlatButton(text='меню', width=100, style=graphics.BUTTON_UI_STYLE)
         from game.views.menu import Menu
-        @button.event("on_click")
+        @button.event('on_click')
         def on_click(event): self.window.show_view(Menu())
-        anchor = self.ui.add(arcade.UIAnchorLayout())
-        anchor.add(button, anchor_x="left", anchor_y="top", align_x=10, align_y=-10)
+        self.anchor = self.ui.add(arcade.UIAnchorLayout())
+        self.anchor.add(button, anchor_x='left', anchor_y='top', align_x=10, align_y=-10)
 
 ######################################## Класс Режима С Выражением ########################################
 
 class ExpressionMode(BaseMode):
-    def __init__(self, root_or_str: nodes.Node | str):
+    def __init__(self, root: nodes.Node):
         super().__init__()
-        if isinstance(root_or_str, nodes.Node): self.original_root = root_or_str
-        else: self.original_root = parse.create_tree(root_or_str)
+        self.original_root = root
+        self.scroll = arcade.UIScrollArea(width=graphics.SCREEN_WIDTH - 50, 
+                                          height=graphics.SCREEN_HEIGHT - 50)
+        self.anchor.add(self.scroll, anchor_x='center', anchor_y='center', align_y=-100)
         self.expression = ExpressionPanel(self, deepcopy(self.original_root))
-        anchor = arcade.UIAnchorLayout()
-        anchor.add(self.expression, anchor_x='center', anchor_y='center')
-        self.ui.add(anchor)
-        self.notification = Notification(self.ui)
-
-    def show_input_dialog(self, action, node):
-        dialog = InputDialog(action, node, self)
-        anchor = self.ui.add(arcade.UIAnchorLayout())
-        anchor.add(dialog, anchor_x="center", anchor_y="center")
+        self.scroll.add(self.expression)
+        self.btn_create_expression = arcade.UIFlatButton(text='+', width=50, style=graphics.BUTTON_UI_STYLE)
+        @self.btn_create_expression.event('on_click')
+        def create_expression(e): 
+            def func(root): self.scroll.add(ExpressionPanel(root))
+            self.show_input_dialog(func)
+        self.anchor.add(self.btn_create_expression, 
+                        anchor_x='right', anchor_y='bottom', align_x=-10, align_y=10)
+        #self.notification = Notification(self.ui)
+        
+    def show_input_dialog(self, func, title='Введите выражение'):
+        dialog = InputDialog(func, self, title)
+        self.anchor.add(dialog, anchor_x='center', anchor_y='center')
 
     def show_notification(self, text, duration=3.0):
         self.notification.add_notification(text, duration) 
 
 ######################################## Ввод Выражения ########################################
-    
+
 class InputDialog(arcade.UIBoxLayout):
-    def __init__(self, 
-                 action: nodes.Action, 
-                 node: nodes.Node, 
-                 view: ExpressionMode, 
-                 title: str = 'Введите выражение'):
-        super().__init__(vertical=True, space_between=10, width=300)
-        self.add(arcade.UILabel(text=title, font_size=18, text_color=arcade.color.WHITE))
-        self.input = arcade.UIInputText(width=280, height=30)
+    def __init__(self, func, view, title='Введите выражение'):
+        super().__init__(vertical=True, space_between=10)
+        self.size_hint_min = (350, 180)
+
+        self.bg_color = graphics.VIOLET
+
+        self.add(arcade.UILabel(text=title,
+                                font_name=graphics.FONT_NAME,
+                                font_size=18,
+                                text_color=arcade.color.WHITE))
+        self.input = arcade.UIInputText(width=280, height=30,
+                                        font_name=graphics.FONT_NAME,
+                                        font_size=18,
+                                        multiline=True)
         self.add(self.input)
-        row = arcade.UIBoxLayout(vertical=False, space_between=10)
+
+        button_row = arcade.UIBoxLayout(vertical=False, space_between=10)
         ok_btn = arcade.UIFlatButton(text='Готово', width=100)
         cancel_btn = arcade.UIFlatButton(text='Отмена', width=100)
 
         @ok_btn.event('on_click')
         def on_ok(e):
             expr = self.input.text.strip()
-            try:
-                tree = parse.create_tree(expr)
-                action(node, tree)
-                view.expression.build()
-            except exceptions.ParseError as err: view.show_notification(err, 2)
+            try: func(parse.create_tree(expr)); view.expression.build()
+            except exceptions.ParseError as err: view.show_notification(err)
             self.parent.remove(self)
-            
+
         @cancel_btn.event('on_click')
         def on_cancel(e): self.parent.remove(self)
 
-        row.add(ok_btn)
-        row.add(cancel_btn)
-        self.add(row)
-        self.bg_color = (40, 40, 40, 220)
-        self.with_padding(all=10)
+        button_row.add(ok_btn)
+        button_row.add(cancel_btn)
+        self.add(button_row)
+
+        self.with_padding(all=15)
+
+    def do_render(self, surface):
+        print('render')
+        arcade.draw_rect_filled(self.rect, self.bg_color)
+        super().do_render(surface)
 
 ######################################## Система Уведомлений ########################################
 
@@ -83,15 +98,13 @@ class Notification:
 
     def add_notification(self, text: str, duration=3.0):
         # Удаляем предыдущее уведомление
-        if self._widget and self._widget.parent:
-            self.ui.remove(self._widget)
-        if self._timer:
-            arcade.unschedule(self._timer)
+        if self._widget and self._widget.parent: self.ui.remove(self._widget)
+        if self._timer: arcade.unschedule(self._timer)
 
         # Создаём новый виджет (внутренний класс или просто локальный)
         self._widget = self._make_widget(text)
         anchor = self.ui.add(arcade.UIAnchorLayout())
-        anchor.add(self._widget, anchor_x="right", anchor_y="bottom", offset_x=-20, offset_y=20)
+        anchor.add(self._widget, anchor_x='right', anchor_y='bottom', offset_x=-20, offset_y=20)
         self._timer = arcade.clock.schedule_once(lambda dt: self._fade_out(), duration)
 
     def _make_widget(self, text):
@@ -182,11 +195,18 @@ class ActionMenu(arcade.UIMouseFilterMixin, arcade.UIBoxLayout):
         super().__init__(vertical=True, space_between=1)
         self.x, self.y = x, y
         w, h = max([len(func.name) for func in node.actions]) * 13, 25
-        for func in node.actions:
+        for action in node.actions:
             btn = arcade.UIFlatButton(
-                width=w, height=h, text=func.name, 
+                width=w, height=h, text=action.name, 
                 style=graphics.BUTTON_ACTION_MENU_STYLE)
-            btn.on_click = lambda e, f=func, n=node, v=view: (f(n), v.expression.build(), v.ui.remove(self))
+            @btn.event('on_click')
+            def click(e: arcade.UIOnClickEvent, 
+                      action: nodes.Action = action, 
+                      node: nodes.Node = node, 
+                      view: ExpressionMode = view):
+                if action.interactive: view.show_input_dialog(lambda root: action(node, root))
+                else: action(node); view.expression.build()
+                view.ui.remove(self)
             self.add(btn)
 
     def on_event(self, event):
