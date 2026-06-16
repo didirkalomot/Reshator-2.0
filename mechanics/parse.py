@@ -1,5 +1,5 @@
 from mechanics import nodes
-from mechanics import exceptions 
+from mechanics import exceptions
 import random
 #import nodes
 
@@ -14,7 +14,7 @@ operators : dict[str : type[nodes.Operator]] = {
     '-' : nodes.BinaryMinus,
     'sin' : nodes.Sin,
     'cos' : nodes.Cos,
-    'log' : nodes.Log, 
+    'log' : nodes.Log,
     'lg' : nodes.Lg,
     'ln' : nodes.Ln,
     '=' : nodes.Equal
@@ -38,10 +38,10 @@ def is_number(string: str) -> bool:
     except ValueError: return False
 
 def is_constant(string: str) -> bool: return string in constants
-    
+
 def is_letter(string: str) -> bool:
     if not string[0].isalpha(): return False
-    for char in string: 
+    for char in string:
         if not (char.isalnum()): return False
     if string in operators: return False
     return True
@@ -53,7 +53,7 @@ def remove_bracfast(string: str) -> str:
             if string[i] == '(': balance += 1
             elif string[i] == ')':
                 balance -= 1
-                if balance == 0: return string 
+                if balance == 0: return string
         string = string[1:-1]
     return string
 
@@ -91,11 +91,11 @@ def find_last_operation(string: str):
     balance = 0
     i = 0
     n = len(string)
-    
+
     while i < n:
         char = string[i]
         if char == '(': balance += 1; i += 1; continue
-        elif char == ')': balance -= 1; i += 1; continue        
+        elif char == ')': balance -= 1; i += 1; continue
         if char not in fist_chars_operators: i += 1; continue
 
         symbol = None; symbol_length = 0
@@ -110,11 +110,11 @@ def find_last_operation(string: str):
                 symbol = op
                 symbol_length = len(op)
                 break
-            
+
         if symbol:
             if balance == 0:
                 candidates.append((i, symbol, operators[symbol].PRIORITY))
-            i += symbol_length 
+            i += symbol_length
         else: i += 1
 
     if not candidates: return None
@@ -128,31 +128,31 @@ def find_last_operation(string: str):
     else: return candidates[-1]
 
 ######################################## Перевод Из Инфиксной Записи В Префиксную ########################################
-    
+
 def infix_to_prefix(string: str) -> str:
-    def recursive_infix_to_prefix(string: str) -> str: 
+    def recursive_infix_to_prefix(string: str) -> str:
         string = remove_bracfast(string)
         if is_number(string) or is_letter(string): return string
         else:
             result = find_last_operation(string)
             if result is None: raise ValueError(f'не корректная строка {string}')
-            
+
             position, symbol = result
             cls = operators[symbol]
 
             if issubclass(cls, nodes.Prefix):
                 remaining = string[position + len(symbol):]
-                
+
                 balance = 1
                 i = 1
                 while i < len(remaining) and balance > 0:
                     if remaining[i] == '(': balance += 1
                     elif remaining[i] == ')': balance -= 1
                     i += 1
-                
+
                 inner = remaining[1:i-1]
                 rest = remaining[i:] if i < len(remaining) else ''
-                
+
                 args = []
                 current = ''
                 balance = 0
@@ -165,10 +165,10 @@ def infix_to_prefix(string: str) -> str:
                         if char == '(': balance += 1
                         elif char == ')': balance -= 1
                 if current: args.append(current.strip())
-                
+
                 processed_args = [recursive_infix_to_prefix(arg) for arg in args]
                 func_part = f'{symbol}({", ".join(processed_args)})'
-                
+
                 if rest: return recursive_infix_to_prefix(func_part + rest)
                 return func_part
 
@@ -176,7 +176,7 @@ def infix_to_prefix(string: str) -> str:
                 left = recursive_infix_to_prefix(string[:position])
                 right = recursive_infix_to_prefix(string[position + len(symbol):])
                 return f'{symbol}({left},{right})'
-            
+
     if not string: return None
     string = wrap_unary_minus(string.replace(' ', ''))
     return recursive_infix_to_prefix(string)
@@ -206,7 +206,7 @@ def prefix_to_tree(string: str) -> nodes.Node:
             op_name = stack.pop()
             node = operators[op_name](*reversed(args))
             stack.append(node)
-        elif token == ',': 
+        elif token == ',':
             continue
         else:
             if token in operators: stack.append(token)
@@ -219,7 +219,7 @@ def prefix_to_tree(string: str) -> nodes.Node:
 
 ######################################## Финальная Функция Генерации Дерева По Строке ########################################
 
-def create_tree(string: str) -> nodes.Node: 
+def create_tree(string: str) -> nodes.Node:
     try: return prefix_to_tree(infix_to_prefix(string))
     except: raise exceptions.ParseError(string)
 
@@ -238,9 +238,7 @@ def random_expression(max_depth=3, prob_term=0.3, num_range=(-100, 100), variabl
         else:
             return nodes.Letter(random.choice(variables))
 
-    # Генерация положительного числа для логарифма
     def _positive_number():
-        # от 2 до 100, исключая 1
         return nodes.Number(random.randint(2, 100))
 
     def _generate(depth):
@@ -252,20 +250,15 @@ def random_expression(max_depth=3, prob_term=0.3, num_range=(-100, 100), variabl
         op_class = operators[op_symbol]
         arity = op_class.ARITY
 
-        # Специальная обработка для log
         if op_symbol == 'log':
-            # Для логарифма аргументы должны быть положительными
-            # Основание: от 2 до 100, аргумент: от 2 до 100
             base = _positive_number()
             arg = _positive_number()
-            # Можно также использовать рекурсию, но ограничить генерацию только числами
-            # Но для простоты используем числа
             return op_class(base, arg)
 
         if arity == 1:
             arg = _generate(depth + 1)
             return op_class(arg)
-        else:  # arity == 2
+        else:
             left = _generate(depth + 1)
             right = _generate(depth + 1)
             return op_class(left, right)

@@ -16,25 +16,51 @@ BLACK = arcade.color.BLACK
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 
-FONT_NAME = 'Better VCR'
-FONT_SIZE = 30
-CHAR_WIDTH = 31
-CHAR_HEIGHT = 61
+FONT_NAME = 'Better VCR'               # стандартный шрифт
+FONT_SIZE = 20                   # базовый размер (пиксели)
+CHAR_WIDTH = 16
+CHAR_HEIGHT = 32
+
+_texture_cache = {}
+
+def get_font_size(depth: int = 0) -> int:
+    """Возвращает абсолютный размер шрифта в пикселях с учётом глубины вложения."""
+    base = FONT_SIZE
+    # Уменьшаем с глубиной, но не меньше 8 и не больше 24
+    return max(8, min(24, base - depth * 2))
 
 def create_token_texture(
-        token: tokens.VisibleToken, 
-        color: arcade.Color = WHITE, 
-        font_size: float = 1) -> arcade.Texture:
-    sprite = arcade.create_text_sprite(
-        str(token), 
-        color, 
-        FONT_SIZE * font_size, 
-        font_name=FONT_NAME)
-    return sprite.texture
+        token: tokens.VisibleToken,
+        color: arcade.Color = WHITE,
+        font_size_px: int = FONT_SIZE) -> arcade.Texture:
+    """
+    Создаёт текстуру для токена с заданным абсолютным размером шрифта (в пикселях).
+    """
+    text = str(token)
+    if not text.strip():
+        return arcade.SpriteSolidColor(1, 1, (0, 0, 0, 0)).texture
+
+    # Ограничиваем размер, чтобы не переполнить атлас
+    size = max(8, min(24, font_size_px))
+    key = (text, color, size)
+
+    if key not in _texture_cache:
+        try:
+            sprite = arcade.create_text_sprite(
+                text,
+                color,
+                size,
+                font_name=FONT_NAME
+            )
+            _texture_cache[key] = sprite.texture
+        except Exception as e:
+            print(f"⚠️ Ошибка создания текстуры для '{text}': {e}")
+            return arcade.SpriteSolidColor(1, 1, (0, 0, 0, 0)).texture
+    return _texture_cache[key]
 
 def create_line_texture(
-        width: int, 
-        height: int, 
+        width: int,
+        height: int,
         color: arcade.Color = WHITE) -> arcade.Texture:
     sprite = arcade.SpriteSolidColor(width, height, color)
     return sprite.texture
@@ -112,7 +138,7 @@ class Popup(arcade.UIMouseFilterMixin, arcade.UIBoxLayout):
                 self.parent.remove(self)
                 return True
         return super().on_event(event)
-    
+
 class InfoDialog(Popup):
     def __init__(self, title, message, button_text='Понятно', bg_color=VIOLET):
         super().__init__(bg_color=bg_color)
@@ -124,7 +150,7 @@ class InfoDialog(Popup):
             text_color=WHITE,
             align='center',
             size_hint=(1, None)))
-        
+
         self.add(arcade.UILabel(
             text=message,
             font_name=FONT_NAME,
@@ -133,16 +159,16 @@ class InfoDialog(Popup):
             multiline=True,
             width=310,
             size_hint=(1, None)))
-        
+
         btn = self.add(arcade.UIFlatButton(text=button_text, width=120, style=BUTTON_UI_STYLE))
         @btn.event('on_click')
         def on_click(e): self.parent.remove(self)
 
 class InputDialog(Popup):
-    def __init__(self, 
-                 view: ExpressionView, 
-                 func, 
-                 title: str='Введите выражение', 
+    def __init__(self,
+                 view: ExpressionView,
+                 func,
+                 title: str='Введите выражение',
                  bg_color: Color=VIOLET):
         super().__init__(bg_color=bg_color)
 
@@ -168,7 +194,7 @@ class InputDialog(Popup):
         def on_ok(e):
             expr = self.input.text.strip()
             try: func(parse.create_tree(expr))
-            except exceptions.ParseError as err: 
+            except exceptions.ParseError as err:
                 view.show_notification(str(err))
             self.parent.remove(self)
 
