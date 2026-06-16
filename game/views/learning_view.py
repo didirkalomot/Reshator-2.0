@@ -1,5 +1,5 @@
 from game import arcade_import as arcade
-from game.views.base import BaseMode
+from game.views.base_view import BaseView
 from game import graphics
 
 class GifWidget(arcade.UIWidget):
@@ -21,7 +21,7 @@ class GifWidget(arcade.UIWidget):
         self.trigger_render()
 
 
-class learning(BaseMode):
+class learning(BaseView):
     TUTORIAL_ITEMS = [
         ('resources/action_tutorial.gif',
          'При нажатии правой кнопкой мыши по объекту будет выведен список его свойств, которые можно выполнить'),

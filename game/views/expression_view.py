@@ -1,89 +1,70 @@
 from __future__ import annotations
 from game import arcade_import as arcade
 from game import graphics
+from game.views.base_view import BaseView
 from mechanics import nodes, tokens, parse, exceptions
 from copy import deepcopy
 
-######################################## Базовый Класс Режима ########################################
-
-class BaseMode(arcade.UIView):
-    def __init__(self):
-        super().__init__()
-        self.background_color = graphics.BLACKBOARD
-        button = arcade.UIFlatButton(text='меню', width=100, style=graphics.BUTTON_UI_STYLE)
-        from game.views.menu import Menu
-        @button.event('on_click')
-        def on_click(event): self.window.show_view(Menu())
-        self.anchor = self.ui.add(arcade.UIAnchorLayout())
-        self.anchor.add(button, anchor_x='left', anchor_y='top', align_x=10, align_y=-10)
-
 ######################################## Класс Режима С Выражением ########################################
 
-class ExpressionMode(BaseMode):
-    def __init__(self, root: nodes.Node):
+class ExpressionView(BaseView):
+    def __init__(self, root: nodes.Node, text_info: str='Упростите выражение'):
         super().__init__()
-        self.original_root = root
-        self.scroll = self.anchor.add(arcade.UIScrollArea(width=graphics.SCREEN_WIDTH - 50, 
-                                                        height=graphics.SCREEN_HEIGHT - 50),
-                                      anchor_x='center', anchor_y='center', align_y=-100)
-        self.expressions = self.scroll.add(arcade.UIBoxLayout(space_between=20))
-        self.expressions.add(ExpressionPanel(self, deepcopy(self.original_root)))
+        self.original_root = deepcopy(root)
+        panel_width = graphics.SCREEN_WIDTH - 50
+        panel_height = graphics.SCREEN_HEIGHT - 100
 
-        self.btn_create_expression = arcade.UIFlatButton(text='+', width=50, style=graphics.BUTTON_UI_STYLE)
-        @self.btn_create_expression.event('on_click')
-        def create_expression(e): 
-            def func(root): self.expressions.add(ExpressionPanel(self, root))
-            self.show_input_dialog(func)
-        self.anchor.add(self.btn_create_expression, 
-                        anchor_x='right', anchor_y='bottom', 
-                        align_x=-10, align_y=10)
-        #self.notification = Notification(self.ui)
+        self.expressions = arcade.UIBoxLayout(
+            width=panel_width,
+            height=0,
+            size_hint=(None, None),
+            space_between=20,
+            align='center')
+
+        self.scroll = arcade.UIScrollArea(
+            width=panel_width,
+            height=panel_height,
+            size_hint=(None, None),
+            children=[self.expressions])
+        
+        self.anchor.add(self.scroll, anchor_x='center', anchor_y='center', align_y=-100)
+
+        self.text_info = text_info
+        self.btn_info = self.anchor.add(arcade.UIFlatButton(
+                                        text='i', 
+                                        width=50, 
+                                        style=graphics.BUTTON_UI_STYLE),
+                                    anchor_x='right', anchor_y='top',
+                                    align_x=-10, align_y=-10)
+        
+        @self.btn_info.event('on_click')
+        def show_info(e):
+            self.anchor.add(graphics.InfoDialog(
+                            title='Информация о задаче',
+                            message_text=self.text_info,
+                            button_text='Понятно'))
+            
+        print(f'Scrol {self.scroll.width}, {self.scroll.height}')
+        print(f'Expessions {self.expressions.width}, {self.expressions.height}')
         
     def show_input_dialog(self, func, title='Введите выражение'):
-        dialog = InputDialog(self, func, title)
+        dialog = graphics.InputDialog(self, func, title)
         self.anchor.add(dialog, anchor_x='center', anchor_y='center')
 
     def show_notification(self, text, duration=3.0):
         self.notification.add_notification(text, duration) 
 
-######################################## Ввод Выражения ########################################
+    def create_expression(self, root: nodes.Node):
+        panel = ExpressionPanel(self, root)
+        self.expressions.add(panel)
+        # Принудительно обновляем размеры до того, как scroll сделает layout
+        self.expressions.fit_content()
+        self.expressions.trigger_full_render()
+        # Теперь scroll может безопасно выполнить do_layout()
+        self.scroll.do_layout()
+        self.scroll.trigger_full_render()
 
-class InputDialog(arcade.UIBoxLayout):
-    def __init__(self, view: ExpressionMode, func: function, title: str='Введите выражение'):
-        super().__init__(vertical=True, space_between=10)
-        self.with_background(color=graphics.VIOLET)
-
-        self.add(arcade.UILabel(text=title,
-                                font_name=graphics.FONT_NAME,
-                                font_size=18,
-                                text_color=arcade.color.WHITE))
-        
-        self.input = self.add(arcade.UIInputText(width=280, height=30,
-                                                 font_name=graphics.FONT_NAME,
-                                                 font_size=18,
-                                                 multiline=True))
-
-        button_row = arcade.UIBoxLayout(vertical=False, space_between=10)
-        ok_btn = arcade.UIFlatButton(text='Готово', width=100)
-        cancel_btn = arcade.UIFlatButton(text='Отмена', width=100)
-
-        @ok_btn.event('on_click')
-        def on_ok(e):
-            expr = self.input.text.strip()
-            try: func(parse.create_tree(expr))
-            except exceptions.ParseError as err: 
-                print('не корректное выражение')
-                #view.show_notification(err)
-            self.parent.remove(self)
-
-        @cancel_btn.event('on_click')
-        def on_cancel(e): self.parent.remove(self)
-
-        button_row.add(ok_btn)
-        button_row.add(cancel_btn)
-        self.add(button_row)
-
-        self.with_padding(all=15)
+    def compleate_expression(self): pass
 
 ######################################## Система Уведомлений ########################################
 
@@ -148,20 +129,27 @@ class Notification:
 
 class ExpressionPanel(arcade.UIBoxLayout):
     def __init__(self, 
-                 view: ExpressionMode, 
+                 view: ExpressionView, 
                  root: nodes.Node, 
                  font_size: float = 1):
-        super().__init__(vertical=False, space_between=5)
+        super().__init__(
+            vertical=False, 
+            space_between=5,
+            size_hint = (None, None),
+            size_hint_min=(240, 40))
         self.view = view
         self.root = root
         self.font_size = font_size
         self.build()
-
+        print(f'Panel {self.width}, {self.height}')
+    
     def build(self):
         self.clear()
         main_build(self, self.root, self.font_size)
-        self.do_layout()
-
+        self.fit_content()   
+        self.do_layout()     
+        self.trigger_full_render()         
+        
 ######################################## Кнопка Одного Узла ########################################
 
 class NodeButton(arcade.UITextureButton):
@@ -174,6 +162,7 @@ class NodeButton(arcade.UITextureButton):
         self.panel = panel
         self.node = node
         self.interaction_buttons = (arcade.MOUSE_BUTTON_LEFT, arcade.MOUSE_BUTTON_RIGHT)
+        print(f'Node {self.width}, {self.height}')
         
     def on_click(self, event):
         match event.button:
@@ -201,7 +190,7 @@ class ActionMenu(arcade.UIMouseFilterMixin, arcade.UIBoxLayout):
             def click(e: arcade.UIOnClickEvent, 
                       action: nodes.Action = action, 
                       node: nodes.Node = node, 
-                      panel: ExpressionMode = panel):
+                      panel: ExpressionView = panel):
                 if action.interactive: panel.view.show_input_dialog(lambda root: action(node, root))
                 else: action(node)
                 panel.build()
@@ -227,9 +216,10 @@ def main_build(panel: ExpressionPanel, root: nodes.Node, font_size: float):
         if isinstance(token, tokens.VisibleToken):
             if isinstance(token, tokens.Bracket):
                 bracket = arcade.UIImage(
-                        texture=graphics.create_token_texture(token, 
-                                                              graphics.YELLOW, 
-                                                              font_size))
+                        texture=graphics.create_token_texture(
+                            token, 
+                            graphics.YELLOW, 
+                            font_size))
                 panel.add(bracket)
             elif isinstance(token, nodes.Node):
                 panel.add(NodeButton(panel, token, font_size))

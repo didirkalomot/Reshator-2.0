@@ -2,10 +2,10 @@
 
 from game import arcade_import as arcade
 from game import graphics
-from game.views.learning_mode import learning
-from game.views.sandbox_mode import SandboxMode
-from game.views.quadratic_equation_mode import QuadraticEquationMode
-from game.views.base import BaseMode
+from game.views.learning_view import learning
+from game.views.sandbox_view import SandboxMode
+from game.views.quadratic_equation_view import QuadraticEquationMode
+from game.views.base_view import BaseView
 
 BUTTON_MODE_WIDTH = 320
 BUTTON_MODE_HEIGHT = 60
@@ -15,7 +15,7 @@ class Menu(arcade.UIView):
         (learning, 'Обучение'),
         (SandboxMode, 'Песочница'),
         (QuadraticEquationMode, 'Квадратное Уравнение'),
-        (BaseMode, 'Режим 4')]
+        (BaseView, 'Режим 4')]
         # следующий режим
         
     def __init__(self):

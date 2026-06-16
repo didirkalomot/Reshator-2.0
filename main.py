@@ -1,7 +1,7 @@
 """этот модуль - входная точка в программу"""
 
 import game.arcade_import as arcade
-from game.views.menu import Menu
+from game.views.menu_view import Menu
 from game.graphics import SCREEN_WIDTH, SCREEN_HEIGHT
 
 def main():
@@ -10,5 +10,4 @@ def main():
     window.show_view(menu_view)
     arcade.run()
 
-if __name__ == "__main__": main()
-
+if __name__ == "__main__": main() 
