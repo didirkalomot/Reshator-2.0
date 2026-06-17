@@ -98,11 +98,15 @@ class ExpressionView(BaseView):
         return new_panel
 
     def complete_expression(self, message=''):
+        from game.views.menu_view import Menu
+        def go_to_menu():
+            self.window.show_view(Menu())
         self.anchor.add(graphics.InfoDialog(
-            title='Задача решена!',
+            title='Уравнение решено!',
             message=message,
-            button_text='Отлично!'
-            ))
+            button_text='Отлично!',
+            callback=go_to_menu
+        ))
 
 
 ######################################## Система Уведомлений ########################################

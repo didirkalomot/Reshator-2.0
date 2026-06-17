@@ -140,7 +140,7 @@ class Popup(arcade.UIMouseFilterMixin, arcade.UIBoxLayout):
         return super().on_event(event)
 
 class InfoDialog(Popup):
-    def __init__(self, title, message, button_text='Понятно', bg_color=VIOLET):
+    def __init__(self, title, message, button_text='Понятно', bg_color=VIOLET, callback=None):
         super().__init__(bg_color=bg_color)
 
         self.add(arcade.UILabel(
@@ -162,7 +162,10 @@ class InfoDialog(Popup):
 
         btn = self.add(arcade.UIFlatButton(text=button_text, width=120, style=BUTTON_UI_STYLE))
         @btn.event('on_click')
-        def on_click(e): self.parent.remove(self)
+        def on_click(e):
+            self.parent.remove(self)
+            if callback:
+                callback()
 
 class InputDialog(Popup):
     def __init__(self,
