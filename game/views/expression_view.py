@@ -18,7 +18,7 @@ class ExpressionView(BaseView):
             width=panel_width,
             height=0,
             size_hint=(1, None),
-            space_between=20,
+            space_between=30,
             align='center')
         self.expressions.size_hint = (1, None)
 
@@ -30,25 +30,34 @@ class ExpressionView(BaseView):
 
         self.anchor.add(self.scroll, anchor_x='center', anchor_y='center', align_x=-80, align_y=-200)
 
-        self.text_info = text_info
-        self.btn_info = self.anchor.add(arcade.UIFlatButton(
-                                        text='i',
-                                        width=50,
-                                        style=graphics.BUTTON_UI_STYLE),
-                                    anchor_x='right', anchor_y='top',
-                                    align_x=-10, align_y=-10)
+        self.add_expression(root)
+
+        self.btn_info = self.anchor.add(
+            arcade.UIFlatButton(
+                text='i',
+                width=50,
+                style=graphics.BUTTON_UI_STYLE),
+            anchor_x='right', anchor_y='top',
+            align_x=-10, align_y=-10)
 
         @self.btn_info.event('on_click')
         def show_info(e):
             self.anchor.add(graphics.InfoDialog(
-                            title='Информация о задаче',
-                            message_text=self.text_info,
-                            button_text='Понятно'))
-
-        print(f'Scrol {self.scroll.width}, {self.scroll.height}')
-        print(f'Expessions {self.expressions.width}, {self.expressions.height}')
-        self.create_expression(self.original_root)
-
+                title='Информация о задаче',
+                message_text=text_info,
+                button_text='Понятно'))
+            
+        self.btn_create_expr = self.anchor.add(
+            arcade.UIFlatButton(
+                text='+',
+                width=50,
+                style=graphics.BUTTON_UI_STYLE),
+            anchor_x='right', anchor_y='bottom',
+            align_x=-10, align_y=10)
+        
+        @self.btn_create_expr.event('on_click')
+        def create_expression(e): self.show_input_dialog(self.add_expression)
+        
     def show_input_dialog(self, func, title='Введите выражение'):
         dialog = graphics.InputDialog(self, func, title)
         self.anchor.add(dialog, anchor_x='center', anchor_y='center')
@@ -56,28 +65,21 @@ class ExpressionView(BaseView):
     def show_notification(self, text, duration=3.0):
         self.notification.add_notification(text, duration)
 
-    def create_expression(self, root: nodes.Node):
+    def add_expression(self, root: nodes.Node):
         panel = ExpressionPanel(self, root, depth=0)
         self.expressions.add(panel, align='center')
         self.expressions.fit_content()
-        if hasattr(self.scroll, 'do_layout'):
-            self.scroll.do_layout()
-        else:
-            self.scroll.force_update()
+        self.scroll.do_layout()
         self.scroll.trigger_full_render()
 
     def update_panel(self, panel):
         panel.build()
         self.expressions.fit_content()
-    # Обновляем скролл в зависимости от типа
-        if hasattr(self.scroll, 'do_layout'):
-            self.scroll.do_layout()      # для ScrollContainer
-        else:
-            self.scroll.force_update()   # для UIScrollArea
-            self.scroll.trigger_full_render()
+        self.scroll.do_layout()
+        self.scroll.trigger_full_render()
 
-
-    def compleate_expression(self): pass
+    def compleate_expression(self): 
+        self.anchor.add(graphics.InfoDialog('Задача решена', '', 'Ура!'))
 
 ######################################## Система Уведомлений ########################################
 
