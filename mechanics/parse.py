@@ -264,3 +264,9 @@ def random_expression(max_depth=3, prob_term=0.3, num_range=(-100, 100), variabl
             return op_class(left, right)
 
     return _generate(0)
+
+def random_equation(max_depth=3, prob_term=0.3, num_range=(-10, 10), variables=('x',)):
+    """Генерирует случайное уравнение вида левая_часть = правая_часть."""
+    left = random_expression(max_depth, prob_term, num_range, variables)
+    right = random_expression(max_depth, prob_term, num_range, variables)
+    return nodes.Equal(left, right)

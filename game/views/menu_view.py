@@ -5,6 +5,7 @@ from game import graphics
 from game.views.learning_view import learning
 from game.views.sandbox_view import SandboxMode
 from game.views.quadratic_equation_view import QuadraticEquationMode
+from game.views.equation_view import EquationView
 from game.views.base_view import BaseView
 
 BUTTON_MODE_WIDTH = 320
@@ -15,15 +16,15 @@ class Menu(arcade.UIView):
         (learning, 'Обучение'),
         (SandboxMode, 'Песочница'),
         (QuadraticEquationMode, 'Квадратное Уравнение'),
-        (BaseView, 'Режим 4')]
+        (EquationView, 'Уравнение')]
         # следующий режим
-        
+
     def __init__(self):
         super().__init__()
         self.background_color = graphics.BLACKBOARD
-        
+
         anchor = self.ui.add(arcade.UIAnchorLayout())
-        
+
         # Заголовок
         title = arcade.UILabel(
             text='Решатор',
@@ -31,22 +32,22 @@ class Menu(arcade.UIView):
             font_size=48,
             text_color=arcade.color.WHITE)
         anchor.add(title, anchor_x='center', anchor_y='top', align_y=-30)
-        
+
         # Область прокрутки
         scroll = arcade.UIScrollArea(width=700, height=400)
         scroll.add(self.build_modes_grid())
-        anchor.add(scroll, 
-                   anchor_x='center', 
-                   align_x = 0, 
-                   anchor_y='center', 
+        anchor.add(scroll,
+                   anchor_x='center',
+                   align_x = 0,
+                   anchor_y='center',
                    align_y=-70)
-        
+
         # Кнопка выхода
         exit_btn = arcade.UIFlatButton(text='Выход', width=200, height=50, style=graphics.BUTTON_UI_STYLE)
         @exit_btn.event('on_click')
         def on_exit(event): arcade.exit()
         anchor.add(exit_btn, anchor_x='center', anchor_y='bottom', align_y=30)
-    
+
     def build_modes_grid(self): #Строит сетку кнопок 2xN
         vertical_layout = arcade.UIBoxLayout(vertical=True, space_between=20)
         for i in range(0, len(self.MODES), 2):
@@ -55,14 +56,14 @@ class Menu(arcade.UIView):
                 self.MODES[i + 1] if i + 1 < len(self.MODES) else None)
             vertical_layout.add(row)
         return vertical_layout
-    
+
     def create_row(self, mode1, mode2=None): # Создает одну строку
         row = arcade.UIBoxLayout(vertical=False, space_between=20)
         row.add(self.create_button(mode1[0], mode1[1])) # Первая кнопка
         if mode2: row.add(self.create_button(mode2[0], mode2[1])) # Вторая кнопка или пустышка
-        else: row.add(arcade.UIWidget(width=BUTTON_MODE_WIDTH, height=BUTTON_MODE_HEIGHT))        
+        else: row.add(arcade.UIWidget(width=BUTTON_MODE_WIDTH, height=BUTTON_MODE_HEIGHT))
         return row
-    
+
     def create_button(self, view_class, text): #Создает одну кнопку для режима игры
         btn = arcade.UIFlatButton(
             text=text,

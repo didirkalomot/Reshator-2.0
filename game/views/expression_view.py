@@ -10,6 +10,7 @@ from copy import deepcopy
 class ExpressionView(BaseView):
     def __init__(self, root: nodes.Node, text_info: str='Упростите выражение'):
         super().__init__()
+        self.notification = Notification(self.ui)
         self.original_root = deepcopy(root)
         panel_width = graphics.SCREEN_WIDTH - 10
         panel_height = graphics.SCREEN_HEIGHT - 150
@@ -41,6 +42,7 @@ class ExpressionView(BaseView):
         @self.btn_info.event('on_click')
         def show_info(e):
             self.anchor.add(graphics.InfoDialog(
+<<<<<<< Updated upstream
                             title='Информация о задаче',
                             message_text=self.text_info,
                             button_text='Понятно'))
@@ -48,6 +50,22 @@ class ExpressionView(BaseView):
         print(f'Scrol {self.scroll.width}, {self.scroll.height}')
         print(f'Expessions {self.expressions.width}, {self.expressions.height}')
         self.create_expression(self.original_root)
+=======
+                title='Информация о задаче',
+                message_text=text_info,
+                button_text='Понятно'))
+
+        self.btn_create_expr = self.anchor.add(
+            arcade.UIFlatButton(
+                text='+',
+                width=50,
+                style=graphics.BUTTON_UI_STYLE),
+            anchor_x='right', anchor_y='bottom',
+            align_x=-10, align_y=10)
+
+        @self.btn_create_expr.event('on_click')
+        def create_expression(e): self.show_input_dialog(self.add_expression)
+>>>>>>> Stashed changes
 
     def show_input_dialog(self, func, title='Введите выражение'):
         dialog = graphics.InputDialog(self, func, title)
@@ -67,8 +85,14 @@ class ExpressionView(BaseView):
         self.scroll.trigger_full_render()
 
     def update_panel(self, panel):
-        panel.build()
+    # Удаляем старую панель из списка
+        if panel in self.expressions.children:
+            self.expressions.remove(panel)
+    # Создаём новую панель на основе того же корня
+        new_panel = ExpressionPanel(self, panel.root, panel.depth)
+        self.expressions.add(new_panel, align='center')
         self.expressions.fit_content()
+<<<<<<< Updated upstream
     # Обновляем скролл в зависимости от типа
         if hasattr(self.scroll, 'do_layout'):
             self.scroll.do_layout()      # для ScrollContainer
@@ -78,6 +102,16 @@ class ExpressionView(BaseView):
 
 
     def compleate_expression(self): pass
+=======
+        self.scroll.do_layout()
+        self.scroll.trigger_full_render()
+    # Обновляем ссылку на панель в EquationView, если нужно
+        if hasattr(self, 'panel') and self.panel is panel:
+            self.panel = new_panel
+
+    def compleate_expression(self):
+        self.anchor.add(graphics.InfoDialog('Задача решена', '', 'Ура!'))
+>>>>>>> Stashed changes
 
 ######################################## Система Уведомлений ########################################
 
@@ -89,22 +123,33 @@ class Notification:
 
     def add_notification(self, text: str, duration=3.0):
         # Удаляем предыдущее уведомление
-        if self._widget and self._widget.parent: self.ui.remove(self._widget)
-        if self._timer: arcade.unschedule(self._timer)
+        if self._widget and self._widget.parent:
+            self.ui.remove(self._widget)
+        if self._timer:
+            try:
+                arcade.unschedule(self._timer)
+            except:
+                pass
 
-        # Создаём новый виджет (внутренний класс или просто локальный)
+        # Создаём новый виджет
         self._widget = self._make_widget(text)
         anchor = self.ui.add(arcade.UIAnchorLayout())
-        anchor.add(self._widget, anchor_x='right', anchor_y='bottom', offset_x=-20, offset_y=20)
-        self._timer = arcade.clock.schedule_once(lambda dt: self._fade_out(), duration)
+        anchor.add(self._widget, anchor_x='right', anchor_y='bottom', align_x=-20, align_y=-20)
+        self._timer = arcade.schedule_once(lambda dt: self._fade_out(), duration)
 
     def _make_widget(self, text):
         class _Widget(arcade.UIWidget):
             def __init__(self):
                 super().__init__(width=300, height=50)
-                self.label = arcade.UILabel(text=text, font_size=14, text_color=arcade.color.WHITE,
-                                            width=290, multiline=True)
-                self.label.position = (5, 5)
+                self.label = arcade.UILabel(
+                    text=text,
+                    font_size=14,
+                    text_color=arcade.color.WHITE,
+                    width=290,
+                    multiline=True
+                )
+                self.label.x = 5
+                self.label.y = 5
                 self.add(self.label)
                 self.bg_color = (0, 0, 0, 200)
                 self._alpha = 255
@@ -113,11 +158,28 @@ class Notification:
                 self._alpha = alpha
                 r, g, b, _ = self.bg_color
                 self.bg_color = (r, g, b, alpha)
+                # Меняем прозрачность текста
                 self.label.color = (255, 255, 255, alpha)
 
             def do_render(self, surface):
-                surface.fill(self.bg_color)
-                super().do_render(surface)
+                # Рисуем фон через arcade (surface не используется)
+                # Вместо surface.fill используем arcade.draw_rectangle_filled
+                # Но для простоты можно использовать UIWidget с background_color
+                # Однако мы используем кастомный рендеринг, поэтому перерисуем фон
+                # в стандартном методе on_draw? Вместо do_render лучше переопределить on_draw
+                pass
+
+            def on_draw(self):
+                # Рисуем фон и текст
+                arcade.draw_rectangle_filled(
+                    self.x + self.width/2,
+                    self.y + self.height/2,
+                    self.width,
+                    self.height,
+                    self.bg_color
+                )
+                # Текст рисуется автоматически через self.label, так как он добавлен как дочерний
+
         return _Widget()
 
     def _fade_out(self):
@@ -127,16 +189,20 @@ class Notification:
         steps = 30
         alpha_step = 255 / steps
         current_alpha = 255
+
         def update(dt):
             nonlocal current_alpha
             current_alpha -= alpha_step
             if current_alpha <= 0:
-                self.ui.remove(self._widget)
+                if self._widget and self._widget.parent:
+                    self.ui.remove(self._widget)
                 self._widget = None
                 return False
-            self._widget.set_alpha(int(current_alpha))
+            if self._widget:
+                self._widget.set_alpha(int(current_alpha))
             return True
-        arcade.clock.schedule_interval(update, 0.5 / steps, steps)
+
+        self._timer = arcade.schedule(update, 0.5 / steps)
 
 ######################################## Панель Отображения Примера ########################################
 
@@ -195,6 +261,8 @@ class NodeButton(arcade.UITextureButton):
 
 ######################################## Список Свойств Узла ########################################
 
+from functools import partial
+
 class ActionMenu(arcade.UIMouseFilterMixin, arcade.UIBoxLayout):
     def __init__(self, panel: ExpressionPanel, node: nodes.Node, x: int, y: int):
         w, h = max([len(func.name) for func in node.actions]) * 13, 25
@@ -203,16 +271,17 @@ class ActionMenu(arcade.UIMouseFilterMixin, arcade.UIBoxLayout):
             btn = arcade.UIFlatButton(
                 width=w, height=h, text=action.name,
                 style=graphics.BUTTON_ACTION_MENU_STYLE)
-            @btn.event('on_click')
-            def click(e: arcade.UIOnClickEvent,
-                      action: nodes.Action = action,
-                      node: nodes.Node = node,
-                      panel: ExpressionView = panel):
-                if action.interactive: panel.view.show_input_dialog(lambda root: action(node, root))
-                else: action(node)
-                panel.view.update_panel(panel)
-                panel.view.ui.remove(self)
+            # Используем partial для передачи аргументов
+            btn.on_click = partial(self._on_action_click, action, node, panel)
             self.add(btn)
+
+    def _on_action_click(self, action: nodes.Action, node: nodes.Node, panel: ExpressionPanel, event):
+        if action.interactive:
+            panel.view.show_input_dialog(lambda root: action(node, root))
+        else:
+            action(node)
+        panel.view.update_panel(panel)
+        panel.view.ui.remove(self)
 
     def on_event(self, event):
         if isinstance(event, arcade.UIMousePressEvent):
