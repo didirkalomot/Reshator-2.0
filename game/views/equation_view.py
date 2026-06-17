@@ -1,13 +1,11 @@
 from game.views.expression_view import ExpressionView
-from mechanics import nodes, parse
 from game import graphics
+from mechanics import nodes, parse
 
 class EquationView(ExpressionView):
     def __init__(self, equation_str: str = None):
-        # Генерируем случайное уравнение, если строка не передана
         if equation_str is None:
             root = parse.random_equation()
-            equation_str = str(root)  # для отображения в заголовке
         else:
             root = parse.create_tree(equation_str)
 
@@ -15,57 +13,51 @@ class EquationView(ExpressionView):
             raise ValueError("Уравнение должно содержать '='")
 
         self.solved = False
-        self.panel = None  # будет ссылка на панель с уравнением
+        # Сохраняем ссылку на корень для проверки
+        self.root = root
+        text_info = f"Решите уравнение: {str(root)}"
 
-        # Вызываем родительский конструктор, передавая корень и текст задачи
-        super().__init__(root, text_info=f"Решите уравнение: {equation_str}")
+        super().__init__(root, text_info)
 
-        # После создания панелей сохраняем ссылку на первую (и единственную) панель
+        # Сохраняем ссылку на основную панель (первую и единственную)
         if self.expressions.children:
-            self.panel = self.expressions.children[0]
+            self.main_panel = self.expressions.children[0]
+        else:
+            self.main_panel = None
 
-        # Начальная подсказка
         self.show_notification("Упрощайте уравнение, пока не получите x = число.")
 
     def update_panel(self, panel):
-        """Переопределяем, чтобы после обновления панели проверить, решено ли уравнение."""
-        super().update_panel(panel)
-        # Проверяем только если уравнение ещё не решено и обновляется наша основная панель
-        if not self.solved and panel is self.panel:
-            self.check_solved(panel.root)
+        # Обновляем панель через родительский метод
+        new_panel = super().update_panel(panel)
+        # Обновляем ссылку на основную панель, если это она
+        if panel is self.main_panel:
+            self.main_panel = new_panel
+            # Проверяем, решено ли уравнение
+            if not self.solved:
+                self.check_solved(new_panel.root)
+        return new_panel
 
     def check_solved(self, root):
-        """Проверяет, приведено ли уравнение к виду x = число (или число = x)."""
         if isinstance(root, nodes.Equal):
             left = root.one
             right = root.two
 
-            # Случай: x = число
+            print(f"Проверка: left={left}, right={right}")
+
+            # Проверяем, что одна сторона — буква, другая — число
             if isinstance(left, nodes.Letter) and isinstance(right, nodes.Number):
                 self.solved = True
-                self.compleate_equation(f"x = {right.value}")
-
-            # Случай: число = x
+                print("Условие выполнено! Вызываем complete_expression")
+                self.complete_expression(f"x = {right.value}")
             elif isinstance(right, nodes.Letter) and isinstance(left, nodes.Number):
                 self.solved = True
-                self.compleate_equation(f"x = {left.value}")
-
-            # Случай: число = число (тождество или противоречие)
+                print("Условие выполнено! Вызываем complete_expression")
+                self.complete_expression(f"x = {left.value}")
             elif isinstance(left, nodes.Number) and isinstance(right, nodes.Number):
                 if left == right:
                     self.solved = True
-                    self.compleate_equation("Уравнение является тождеством (любое x)")
+                    print("Условие выполнено! Вызываем complete_expression")
+                    self.complete_expression("Тождество (любое x)")
                 else:
-                    self.show_notification("Уравнение не имеет решений (противоречие)")
-
-
-
-    def compleate_equation(self, message):
-        """Показывает диалог завершения с результатом."""
-        self.anchor.add(
-            graphics.InfoDialog(
-                title="Уравнение решено!",
-                message_text=message,
-                button_text="Отлично!"
-            )
-        )
+                    self.show_notification("Противоречие, решений нет")

@@ -1,15 +1,13 @@
 from __future__ import annotations
 from mechanics import parse
 from game.views.expression_view import ExpressionView
-<<<<<<< Updated upstream
 
 ######################################## Режим Со Случайным Примером ########################################
 
-class QuadraticEquationMode(ExpressionView): 
-    def __init__(self): 
+class QuadraticEquationMode(ExpressionView):
+    def __init__(self):
         string = 'a^2 - a + 10 = 0'
         super().__init__(parse.create_tree(string))
-=======
 from mechanics import nodes, parse, exceptions
 import random
 
@@ -72,6 +70,3 @@ class QuadraticEquationMode(ExpressionView):
 
         # Вызываем родительский конструктор с корнем и текстом задачи
         super().__init__(root, text_info=f"Решите квадратное уравнение: {equation_str}")
-
-        
->>>>>>> Stashed changes

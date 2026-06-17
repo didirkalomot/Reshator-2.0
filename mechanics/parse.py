@@ -3,6 +3,25 @@ from mechanics import exceptions
 import random
 #import nodes
 
+# Список простых линейных уравнений, которые легко решаются
+SIMPLE_EQUATIONS = [
+    "x + 2 = 5",          # x = 3
+    "2*x = 6",            # x = 3
+    "3*x - 4 = 8",        # x = 4
+    "x / 2 = 4",          # x = 8
+    "5 = x + 1",          # x = 4
+    "2*x + 3 = 11",       # x = 4
+    "x - 3 = 7",          # x = 10
+    "10 = 2*x + 2",       # x = 4
+    "x + 5 = 12",         # x = 7
+    "4*x = 20",           # x = 5
+    "x/3 = 2",            # x = 6
+    "7 = x - 2",          # x = 9
+    "2*x + 1 = 9",        # x = 4
+    "x - 8 = 1",          # x = 9
+    "3*x = 15",           # x = 5
+]
+
 ######################################## Словарь Символов И Их Операторов ########################################
 
 operators : dict[str : type[nodes.Operator]] = {
@@ -266,7 +285,15 @@ def random_expression(max_depth=3, prob_term=0.3, num_range=(-100, 100), variabl
     return _generate(0)
 
 def random_equation(max_depth=3, prob_term=0.3, num_range=(-10, 10), variables=('x',)):
-    """Генерирует случайное уравнение вида левая_часть = правая_часть."""
-    left = random_expression(max_depth, prob_term, num_range, variables)
-    right = random_expression(max_depth, prob_term, num_range, variables)
-    return nodes.Equal(left, right)
+    """
+    Генерирует случайное уравнение.
+    С вероятностью 0.9 возвращает простое уравнение из списка SIMPLE_EQUATIONS.
+    Иначе генерирует случайное через random_expression.
+    """
+    if random.random() < 0.9:
+        eq_str = random.choice(SIMPLE_EQUATIONS)
+        return create_tree(eq_str)
+    else:
+        left = random_expression(max_depth, prob_term, num_range, variables)
+        right = random_expression(max_depth, prob_term, num_range, variables)
+        return nodes.Equal(left, right)
